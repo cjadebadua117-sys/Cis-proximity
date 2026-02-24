@@ -439,12 +439,12 @@ def sign_out(request):
         
         presence.save()
 
-        # Record sign-out time for latest sign-in
+        # Record sign-out time for the oldest active sign-in (to handle multiple sign-ins)
         try:
             latest_sign_in = SignInRecord.objects.filter(
                 student=request.user,
                 sign_out_time__isnull=True
-            ).latest('sign_in_time')
+            ).earliest('sign_in_time')
             latest_sign_in.sign_out_time = timezone.now()
             latest_sign_in.save()
             # Also create a laboratory exit record so history shows student exits.
@@ -1613,19 +1613,52 @@ def laboratory_history(request):
         messages.error(request, 'Access denied — laboratory history is for instructors only.')
         return redirect('dashboard')
 
+    # Get instructor's section (may be None if not assigned)
+    instructor_section = None
+    try:
+        instructor_profile = request.user.instructor_profile
+        instructor_section = instructor_profile.section
+    except InstructorProfile.DoesNotExist:
+        instructor_profile = None
+
     # Try to load the modern `LaboratoryHistory` table; if the DB schema
     # is legacy (different columns), fall back to reading the legacy table
     # via `LegacyLaboratoryHistory` and normalize the rows for the template.
     lab_rows = []
     total = 0
+    
+    # Check if instructor has a section assigned
+    if instructor_section is None:
+        # Instructor has no section - show appropriate message
+        if request.user.is_staff or request.user.is_superuser:
+            # Admin/superuser can see ALL lab history
+            section_filter = None
+        else:
+            # Regular instructor with no section - show message
+            from django.contrib import messages
+            messages.warning(request, 'You do not have a section assigned. Please contact an administrator to assign your section.')
+            section_filter = None
+    else:
+        section_filter = instructor_section
+    
     try:
-        # restrict to students enrolled in this instructor's section
-        section = request.user.instructor_profile.section
+        # Build query based on section assignment
         instr_ids = InstructorProfile.objects.values_list('user_id', flat=True)
-        qs = (LaboratoryHistory.objects.select_related('student', 'room')
-              .filter(student__studentpresence__section=section)
-              .exclude(student__id__in=instr_ids)
-              .order_by('-exit_time'))
+        
+        if section_filter is None:
+            # Show all records (admin/superuser or instructor without section)
+            qs = (LaboratoryHistory.objects.select_related('student', 'room')
+                  .exclude(student__id__in=instr_ids)
+                  .order_by('-exit_time'))
+        else:
+            # Show only records for this instructor's section
+            qs = (LaboratoryHistory.objects.select_related('student', 'room')
+                  .filter(student__studentpresence__section=section_filter)
+                  .exclude(student__id__in=instr_ids)
+                  .order_by('-exit_time'))
+        
+        total = qs.count()
+        
         for r in qs:
             from datetime import timedelta
             # Calculate entrance time by subtracting duration from exit time
