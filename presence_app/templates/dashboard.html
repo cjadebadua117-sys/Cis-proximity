@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load utils_tags %}
+
+{% block title %}Dashboard | CIS-Prox{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>
+        <svg class="icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
+        </svg>
+        Sign-In Dashboard
+    </h1>
+    <p class="subtitle">Log your presence in a room or laboratory</p>
+
+    {% if current_broadcasts %}
+        <div class="alert alert-info">
+            <strong>Announcement:</strong> {{ current_broadcasts.0.message }}
+        </div>
+    {% endif %}
+
+    {% if network_status == 'online' %}
+        <div class="alert alert-success">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            You are on the University Network. You can now Enter Rooms.
+        </div>
+    {% else %}
+        <div class="alert alert-error">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            You are NOT on the University Network. Room entry is disabled. Please connect to University Wi-Fi.
+        </div>
+    {% endif %}
+
+    {% if current_presence %}
+        <div class="dark-bg-container">
+            <h3>✓ Currently Signed In</h3>
+            <p class="dark-status">
+                {% if current_presence.current_room and current_presence.current_room.name != 'Student Lounge' %}
+                    <strong>Room:</strong> {{ current_presence.current_room.name }}
+                {% else %}
+                    Outside department
+                {% endif %}<br>
+                <strong>Signed in at:</strong> {{ current_time_ph|date:"h:i:s A" }}<br>
+                <strong>Time:</strong> {{ current_time_ph|date:"l, F d, Y, h:i A" }} (GMT+8)<br>
+                <strong>Status:</strong> 
+                {% if network_status == 'online' %}
+                    <span class="status-badge status-online">ONLINE</span>
+                {% else %}
+                    <span class="status-badge status-disconnected">DISCONNECTED</span>
+                {% endif %}
+            </p>
+        </div>
+    {% endif %}
+
+    <div class="grid" style="grid-template-columns: 1fr;">
+            <div class="card">
+            <h3>
+                <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
+                </svg>
+                Select a Room or Lab
+            </h3>
+            <p style="margin-bottom: 1.5rem;">Choose the location where you currently are:</p>
+            
+            <form method="POST" action="/signin/">
+                {% csrf_token %}
+                
+                {% if not rooms %}
+                    <div class="alert alert-warning">
+                        No rooms available. Please contact the system administrator.
+                    </div>
+                {% else %}
+                    <div class="form-group">
+                        <label for="room_select">Room / Laboratory</label>
+                        <select id="room_select" name="room_id" required>
+                            <option value="">-- Select a location --</option>
+                            {% for room in rooms %}
+                                <option value="{{ room.id }}">
+                                    {{ room.name }}
+                                    {% if room.description %}
+                                        ({{ room.description }})
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-success" style="width: 100%; padding: 1rem;">
+                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Enter Room
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+
+        {% if current_presence %}
+                <div class="card">
+                <h3>
+                    <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                        <path d="M3 12h18M12 3v18" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Exit Room
+                </h3>
+                <p style="margin-bottom: 1.5rem;">Leave your current location and mark yourself as offline.</p>
+                <form method="POST" action="/signout/">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" style="width: 100%; padding: 1rem;">
+                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                            <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Exit Room
+                    </button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+
+    <div style="margin-top: 3rem; padding: 1.5rem; background: var(--bg-muted); border-radius: 5px;">
+        <h3>
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z"/>
+            </svg>
+            How It Works
+        </h3>
+        <ul style="margin-left: 1.5rem; color: var(--text-muted); line-height: 1.8;">
+            <li>Select your current room or laboratory from the dropdown</li>
+            <li>Click "Enter Room" to log your presence</li>
+            <li>Your location will be visible to classmates searching for you</li>
+            <li>Your status automatically updates to "Offline" if you disconnect from University Wi-Fi</li>
+            <li>Click "Exit Room" when you leave the location</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Student Sign-Out Times | CIS-Prox{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    <h1 style="text-align: center; margin-bottom: 2rem;">Manage Student Sign-Out Times</h1>
+    
+    <!-- Section Info -->
+    <div style="background: var(--bg-muted); border-left: 4px solid var(--primary-crest); padding: 1.5rem; border-radius: 5px; margin-bottom: 2rem;">
+        <p style="margin: 0.5rem 0;"><strong>Your Section:</strong> {{ section }}</p>
+        <p style="margin: 0.5rem 0;"><strong>Date:</strong> {{ today|date:"l, F j, Y" }}</p>
+        <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Adjust cleaning sign-out times for your students if needed</p>
+    </div>
+
+    <!-- Network Status -->
+    {% if network_status == 'online' %}
+        <div class="alert alert-success">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            You are on the University Network.
+        </div>
+    {% else %}
+        <div class="alert alert-error">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            You are NOT on the University Network. Some features may be limited.
+        </div>
+    {% endif %}
+
+    <!-- Messages -->
+    {% if messages %}
+        <div style="margin-bottom: 2rem;">
+            {% for message in messages %}
+                <div style="background: {% if message.tags == 'success' %}rgba(47,133,90,0.1){% elif message.tags == 'error' %}rgba(192,57,43,0.1){% else %}rgba(212,165,86,0.1){% endif %}; 
+                            border-left: 4px solid {% if message.tags == 'success' %}var(--success){% elif message.tags == 'error' %}var(--danger){% else %}var(--warning){% endif %}; 
+                            padding: 1rem; border-radius: 5px; margin-bottom: 1rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- Active Cleanings -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 style="text-align: left; color: var(--warning); margin-bottom: 1.5rem;">Active Cleanings</h2>
+        
+        {% if activities %}
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: rgba(212,165,86,0.08); border-bottom: 2px solid var(--warning);">
+                            <th style="padding: 1rem; text-align: left;">Student Name</th>
+                            <th style="padding: 1rem; text-align: center;">Sign In Time</th>
+                            <th style="padding: 1rem; text-align: center;">Current Status</th>
+                            <th style="padding: 1rem; text-align: center;">Adjust Sign-Out Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in activities %}
+                            <tr style="border-bottom: 1px solid rgba(212,165,86,0.3);">
+                                <td style="padding: 1rem; font-weight: bold;">
+                                    {{ activity.student.get_full_name|default:activity.student.username }}
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    {{ activity.sign_in_time|date:"h:i:s A" }}
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                        {% if activity.sign_out_time %}
+                                        <span style="background: rgba(47,133,90,0.12); color: var(--success); padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.85rem;">
+                                            Signed out at {{ activity.sign_out_time|date:"h:i A" }}
+                                        </span>
+                                        {% else %}
+                                        <div>
+                                            <span style="background: rgba(212,165,86,0.15); color: var(--warning); padding: 0.3rem 0.7rem; border-radius: 20px; font-size: 0.85rem;">
+                                                Still Active
+                                            </span>
+                                            <div class="progress-bar">
+                                                <div class="progress-bar-inner" style="width: {{ activity.progress }}%;"></div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    <form method="POST" action="{% url 'instructor_adjust_signout' activity.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">
+                                            <input type="time" name="signout_time" style="padding: 0.5rem; border: 1px solid rgba(255,255,255,0.06); border-radius: 5px; font-size: 0.9rem; background: transparent; color: var(--text-on-dark);" required>
+                                            <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                                Update
+                                            </button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="background: var(--bg-muted); padding: 2rem; border-radius: 5px; text-align: center;">
+                <!-- simple inline illustration -->
+                <svg width="120" height="120" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:1rem; opacity:0.6;">
+                    <rect x="8" y="20" width="48" height="28" rx="4" stroke="#999" stroke-width="2" fill="none"/>
+                    <path d="M8 20l24-12 24 12" stroke="#999" stroke-width="2" fill="none"/>
+                    <circle cx="16" cy="36" r="3" fill="#999"/>
+                    <circle cx="32" cy="36" r="3" fill="#999"/>
+                    <circle cx="48" cy="36" r="3" fill="#999"/>
+                </svg>
+                <p style="color: var(--text-muted); margin: 0; font-size:1.1rem;">All caught up! No active cleaning sessions to manage.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Instructions -->
+    <div style="background: var(--bg-muted); border-left: 4px solid var(--info); padding: 1.5rem; border-radius: 5px; margin-bottom: 2rem;">
+        <h3 style="margin-top: 0; color: var(--text-on-dark);">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+            How to Use
+        </h3>
+        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+            <li>Select a time from the time picker for the student's sign-out time</li>
+            <li>Click "Update" to save the new time</li>
+            <li>Duration will be automatically calculated based on sign-in and sign-out times</li>
+        </ul>
+    </div>
+
+    <!-- Back Link -->
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{% url 'instructor_dashboard' %}" style="color: var(--primary-crest); text-decoration: none; font-weight: bold;">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

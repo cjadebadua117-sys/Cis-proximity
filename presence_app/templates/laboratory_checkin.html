@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Laboratory Check-In | CIS-Prox{% endblock %}
+
+{% block content %}
+<style>
+    .checkin-container {
+        max-width: 600px;
+        margin: 3rem auto;
+        padding: 0 1rem;
+    }
+
+    .checkin-card {
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 12px;
+        padding: 2.5rem;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    }
+
+    .checkin-title {
+        color: #ffffff !important;
+        -webkit-text-stroke: 1.5px #FF00FF !important;
+        text-shadow:
+            1px 0 0 #FF00FF, -1px 0 0 #FF00FF,
+            0 1px 0 #FF00FF, 0 -1px 0 #FF00FF;
+        font-size: 2rem !important;
+        font-weight: 900 !important;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+        display: block;
+        color: #FF00FF;
+        font-weight: 600;
+        margin-bottom: 0.7rem;
+        font-size: 0.95rem;
+        letter-spacing: 0.3px;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.8rem;
+        background: #0a0a0a;
+        border: 1px solid #333;
+        border-radius: 6px;
+        color: #e0e0e0;
+        font-family: inherit;
+        font-size: 1rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #FF00FF;
+        box-shadow: 0 0 15px rgba(255, 0, 255, 0.3);
+    }
+
+    .form-group textarea {
+        resize: vertical;
+        min-height: 120px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.9rem 2rem;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        letter-spacing: 0.5px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-submit {
+        background: linear-gradient(135deg, #FF00FF, #FF1493);
+        color: #fff;
+        flex: 1;
+        box-shadow: 0 0 20px rgba(255, 0, 255, 0.3);
+    }
+
+    .btn-submit:hover {
+        box-shadow: 0 0 40px rgba(255, 0, 255, 0.6);
+        transform: translateY(-2px);
+    }
+
+    .btn-cancel {
+        background: transparent;
+        color: #888;
+        border: 1px solid #333;
+        flex: 1;
+    }
+
+    .btn-cancel:hover {
+        border-color: #FF00FF;
+        color: #FF00FF;
+    }
+
+    .helper-text {
+        color: #666;
+        font-size: 0.85rem;
+        margin-top: 0.4rem;
+        font-style: italic;
+    }
+
+    .success-message {
+        background: rgba(144, 238, 144, 0.1);
+        border: 1px solid #90EE90;
+        color: #90EE90;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+
+    .error-message {
+        background: rgba(255, 0, 127, 0.1);
+        border: 1px solid #FF00FF;
+        color: #FF00FF;
+        padding: 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+        .checkin-card {
+            padding: 1.5rem;
+        }
+
+        .checkin-title {
+            font-size: 1.5rem !important;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div class="checkin-container">
+    <div class="checkin-card">
+        <h1 class="checkin-title">Lab Check-In</h1>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="{% if message.tags %}{{ message.tags }}{% endif %}-message">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="lab_room_number">Lab Room Number *</label>
+                <input 
+                    type="text" 
+                    id="lab_room_number" 
+                    name="lab_room_number" 
+                    placeholder="e.g., Lab-101, Lab-202, CIS-Lab"
+                    required
+                    autocomplete="off"
+                >
+                <div class="helper-text">Enter the lab room number or identifier</div>
+            </div>
+
+            <div class="form-group">
+                <label for="purpose_of_visit">Purpose of Visit *</label>
+                <textarea 
+                    id="purpose_of_visit" 
+                    name="purpose_of_visit" 
+                    placeholder="What are you doing in the lab? (e.g., Programming assignment, Project development, Study group)"
+                    required
+                ></textarea>
+                <div class="helper-text">Briefly describe the purpose of your visit</div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-submit">Check In</button>
+                <a href="{% url 'laboratory_history' %}" class="btn btn-cancel">Back</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

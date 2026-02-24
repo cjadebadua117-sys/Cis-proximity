@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}Register | CIS-Prox{% endblock %}
+{% block extra_css %}
+{{ block.super }}
+<style>
+.auth-container {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 18px;
+}
+
+.role-switcher-container {
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    border-radius: 999px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    padding: 0.35rem;
+    margin: 1.25rem 0 1.75rem;
+}
+
+.role-option {
+    border: 0;
+    border-radius: 999px;
+    color: #9fb0c8;
+    background: transparent;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    padding: 0.8rem 0.75rem;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.25s ease, color 0.25s ease, background 0.25s ease;
+}
+
+.role-option:hover {
+    transform: translateY(-1px) scale(1.01);
+}
+
+.role-option.active {
+    color: #fff;
+    background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+    box-shadow: 0 10px 24px rgba(59, 130, 246, 0.32);
+}
+
+.floating-field {
+    position: relative;
+}
+
+.floating-field .auth-input {
+    padding-top: 1.15rem;
+    padding-bottom: 0.62rem;
+    border-radius: 12px;
+    border-color: rgba(148, 163, 184, 0.22);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+}
+
+.floating-field .auth-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.22);
+}
+
+.password-wrapper {
+    position: relative;
+}
+
+.floating-label {
+    position: absolute;
+    left: 0.85rem;
+    top: 0.9rem;
+    color: #9fb0c8;
+    font-size: 0.88rem;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.floating-field .auth-input:focus + .floating-label,
+.floating-field .auth-input:not(:placeholder-shown) + .floating-label {
+    top: 0.3rem;
+    font-size: 0.68rem;
+    color: #c7d5ea;
+    letter-spacing: 0.04em;
+}
+
+.password-wrapper .toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.register-toast-stack {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    width: min(360px, calc(100vw - 2rem));
+}
+
+.ng-toast {
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    border-left: 4px solid #ef4444;
+    color: #e5edf8;
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    opacity: 0;
+    transform: translateX(18px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.ng-toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.ng-toast.success { border-left-color: #10b981; }
+.ng-toast.info { border-left-color: #3b82f6; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+    <div id="register-toast-stack" class="register-toast-stack" aria-live="polite" aria-atomic="true"></div>
+    {% if messages %}
+        {% for msg in messages %}
+            <div class="flash-seed" data-flash-message="{{ msg|escapejs }}" data-flash-tag="{{ msg.tags }}" hidden></div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="auth-container">
+        <h2 class="text-3xl font-bold text-white mb-2">Create Account</h2>
+        <p class="text-slate-400 text-sm mb-8">Register for the CIS-Prox system</p>
+
+        <div class="role-switcher-container">
+            <button type="button" id="btn-student" class="role-option" onclick="setRole('student')">Student</button>
+            <button type="button" id="btn-instructor" class="role-option" onclick="setRole('instructor')">Instructor</button>
+        </div>
+
+        <form method="POST" class="space-y-6" novalidate {% if user_type %}action="?type={{ user_type }}"{% endif %}>
+            {% csrf_token %}
+            <input type="hidden" id="id_user_type" name="user_type" value="{% if is_instructor %}instructor{% else %}student{% endif %}">
+
+            <div class="input-group mb-4 floating-field" id="student-id-group">
+                <input type="text" id="id_student_id_number" name="student_id_number" class="auth-input" placeholder=" " value="{{ form.student_id_number.value|default_if_none:'' }}">
+                <label id="id-label" for="id_student_id_number" class="floating-label">Student ID Number</label>
+                {% if form.student_id_number.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.student_id_number.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="input-group mb-4 floating-field">
+                <input type="text" id="id_username" name="username" class="auth-input" placeholder=" " value="{{ form.username.value|default_if_none:'' }}">
+                <label for="id_username" class="floating-label">Username</label>
+                {% if form.username.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.username.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="input-group mb-4 floating-field">
+                <input type="email" id="id_email" name="email" class="auth-input" placeholder=" " value="{{ form.email.value|default_if_none:'' }}">
+                <label for="id_email" class="floating-label">Email Address</label>
+                {% if form.email.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.email.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <div class="input-group mb-6 floating-field">
+                <div class="password-wrapper">
+                    <input type="password" id="id_password1" name="password1" class="auth-input pass-input" placeholder=" " required>
+                    <label for="id_password1" class="floating-label">Password</label>
+                    <button type="button" id="toggleBtn2" class="toggle-password" aria-label="Show password">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+                {% if form.password1.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.password1.errors.0 }}</p>
+                {% endif %}
+            </div>
+
+            <button type="submit" class="btn-auth">Create Account</button>
+        </form>
+
+        <p class="text-center text-slate-400 text-xs mt-8">
+            Already have an account? <a href="/login" class="text-blue-500 font-bold">Sign in</a>
+        </p>
+    </div>
+</div>
+
+<script>
+function setRole(role) {
+    const studentBtn = document.getElementById('btn-student');
+    const instructorBtn = document.getElementById('btn-instructor');
+    const idLabel = document.getElementById('id-label');
+    const idInput = document.getElementById('id_student_id_number');
+    const hidden = document.getElementById('id_user_type');
+    const idGroup = document.getElementById('student-id-group');
+
+    if (role === 'student') {
+        studentBtn.classList.add('active');
+        instructorBtn.classList.remove('active');
+        idLabel.innerText = 'Student ID Number';
+        idInput.placeholder = ' ';
+        hidden.value = 'student';
+        if (idGroup) idGroup.style.display = 'block';
+    } else {
+        instructorBtn.classList.add('active');
+        studentBtn.classList.remove('active');
+        idLabel.innerText = 'Employee / Instructor ID';
+        idInput.placeholder = ' ';
+        hidden.value = 'instructor';
+        if (idGroup) idGroup.style.display = 'none';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const initial = "{% if is_instructor %}instructor{% else %}student{% endif %}";
+    setRole(initial);
+});
+
+function setupToggle(btnId, inputId) {
+    document.getElementById(btnId)?.addEventListener('click', function() {
+        const pw = document.getElementById(inputId);
+        if (pw) {
+            pw.type = pw.type === 'password' ? 'text' : 'password';
+        }
+    });
+}
+setupToggle('toggleBtn2', 'id_password1');
+
+document.querySelectorAll('.flash-seed[data-flash-message]').forEach(function(seed, idx) {
+    const text = seed.getAttribute('data-flash-message');
+    if (!text) return;
+
+    const tag = seed.getAttribute('data-flash-tag') || '';
+    const stack = document.getElementById('register-toast-stack');
+    if (!stack) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'ng-toast ' + tag;
+    toast.textContent = text;
+    stack.appendChild(toast);
+
+    setTimeout(function() {
+        toast.classList.add('show');
+    }, 20 + (idx * 60));
+
+    setTimeout(function() {
+        toast.classList.remove('show');
+        setTimeout(function() { toast.remove(); }, 250);
+    }, 3200 + (idx * 160));
+});
+</script>
+{% endblock %}

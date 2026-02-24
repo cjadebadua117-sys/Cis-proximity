@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block title %}Login | CIS-Prox{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+  <div class="auth-container">
+    {% if messages %}
+      <div class="mb-4">
+        {% for msg in messages %}
+          <div class="text-sm mb-1 {% if msg.tags == 'success' %}text-green-400{% else %}text-red-500{% endif %}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+      <h2 class="text-3xl font-bold text-white mb-2">Sign In</h2>
+      <p class="text-slate-400 text-sm mb-8">Access the CIS-Prox system</p>
+
+    <form method="POST" class="space-y-6">
+        {% csrf_token %}
+
+        <div class="input-group">
+            <label for="id_username">Username</label>
+            <input type="text" id="id_username" name="username" class="auth-input" placeholder="Enter Username" value="{{ form.username.value|default_if_none:'' }}">
+            {% if form.username.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.username.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="input-group">
+            <label for="id_password">Password</label>
+            <div class="password-wrapper">
+                <input type="password" id="id_password" name="password" class="auth-input pass-input" placeholder="Password" value="">
+                <button type="button" id="toggleBtn" class="toggle-password" aria-label="Show password">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                </button>
+            </div>
+            {% if form.password.errors %}
+                <p class="text-red-500 text-xs mt-1">{{ form.password.errors.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div class="mb-6">
+            <a href="#" class="text-xs text-blue-500 hover:underline">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-auth">
+            Sign In
+        </button>
+    </form>
+    
+    <p class="text-center text-slate-400 text-xs mt-8">
+        Don't have an account? <a href="/register" class="text-blue-500 font-bold">Register here</a>
+    </p>
+  </div>
+</div>
+
+<script>
+document.getElementById('toggleBtn')?.addEventListener('click', function() {
+    var pw = document.getElementById('id_password');
+    if (pw) {
+        pw.type = pw.type === 'password' ? 'text' : 'password';
+    }
+});
+</script>
+{% endblock %}

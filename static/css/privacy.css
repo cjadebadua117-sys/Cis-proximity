@@ -1,0 +1,815 @@
+/* ====== PRIVACY ACTIONS BUTTON OVERRIDES ====== */
+a.privacy-action,
+a.privacy-action:link,
+a.privacy-action:visited,
+a.privacy-action:hover,
+a.privacy-action:active,
+a.privacy-action:focus {
+  color: #ffffff !important;
+  text-decoration: none !important;
+}
+
+.privacy-action,
+.privacy-action:any-link {
+  color: #fff !important;
+}
+
+/* Floating Privacy Button */
+.privacy-btn-floating {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 999;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d400ff, #9c27b0);
+  color: #fff;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  font-size: 32px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(212, 0, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.privacy-btn-floating:hover {
+  transform: scale(1.15);
+  box-shadow: 0 12px 30px rgba(212, 0, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.privacy-btn-floating:active {
+  transform: scale(0.95);
+}
+
+/* Privacy Modal */
+.privacy-modal {
+  display: none;
+  position: fixed;
+  z-index: 10000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.3s ease;
+}
+
+.privacy-modal.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.privacy-modal-content {
+  background: rgba(18, 18, 20, 0.98);
+  background: linear-gradient(135deg, rgba(25, 25, 35, 0.99), rgba(35, 35, 50, 0.99));
+  border: 1px solid rgba(212, 0, 255, 0.2);
+  border-radius: 20px;
+  padding: 40px 40px 6000px 40px;
+  max-width: 550px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 20px 60px rgba(212, 0, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.privacy-modal-header {
+  margin-bottom: 20px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.privacy-modal-title {
+  font-size: 20px;
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #d400ff, #d400ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.privacy-modal-close {
+  background: rgba(212, 0, 255, 0.1);
+  border: 1px solid rgba(212, 0, 255, 0.3);
+  color: #d400ff;
+  font-size: 28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.privacy-modal-close:hover {
+  background: rgba(212, 0, 255, 0.2);
+  transform: rotate(90deg);
+}
+
+/* Privacy Options Container */
+.privacy-options {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 30px;
+}
+
+.privacy-option {
+  background: rgba(255, 255, 255, 0.04);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(212, 0, 255, 0.05));
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.privacy-option::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(212, 0, 255, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.privacy-option:hover {
+  background: rgba(212, 0, 255, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(212, 0, 255, 0.12));
+  border-color: rgba(212, 0, 255, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(212, 0, 255, 0.15);
+}
+
+.privacy-option:hover::before {
+  opacity: 1;
+}
+
+.privacy-option input[type="radio"] {
+  margin-right: 10px;
+  margin-right: 14px;
+  cursor: pointer;
+  accent-color: #d400ff;
+  width: 18px;
+  height: 18px;
+}
+
+.privacy-option label {
+  cursor: pointer;
+        display: flex;
+        align-items: flex-start;
+        margin: 0;
+        gap: 12px;
+}
+
+.privacy-option-content {
+  flex: 1;
+}
+
+.privacy-option-icon {
+  font-size: 20px;
+  margin-right: 4px;
+  display: inline-block;
+  color: #e6e6e6;
+}
+
+.privacy-option-title {
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 5px;
+  font-size: 15px;
+}
+
+.privacy-option-desc {
+  font-size: 12px;
+  color: #a0a0b0;
+  margin: 0;
+}
+
+/* Custom Friends Selection */
+.privacy-friends-section {
+  margin-top: 20px;
+        margin-top: 30px;
+        padding-top: 25px;
+        border-top: 1px solid rgba(212, 0, 255, 0.2);
+        animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+  }
+}
+
+.privacy-friends-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.privacy-search-box {
+  width: 100%;
+  padding: 13px 16px;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.2));
+  color: #f4f4f6;
+  border: 2px solid rgba(212, 0, 255, 0.2);
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 14px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  transition: all 0.2s ease;
+}
+
+.privacy-search-box:focus {
+  outline: none;
+  border-color: #d400ff;
+  box-shadow: 0 0 12px rgba(212, 0, 255, 0.3), inset 0 0 8px rgba(212, 0, 255, 0.1);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(212, 0, 255, 0.05));
+}
+
+.privacy-search-box::placeholder {
+  color: #606070;
+}
+
+.privacy-search-results {
+  max-height: 250px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 2px solid rgba(212, 0, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.privacy-peer-item {
+  padding: 10px 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.privacy-peer-item:last-child {
+  border-bottom: none;
+}
+
+.privacy-peer-item:hover {
+  background: rgba(212, 0, 255, 0.08);
+  background: rgba(212, 0, 255, 0.12);
+  padding-left: 18px;
+}
+
+.privacy-peer-item input[type="checkbox"] {
+  margin-right: 10px;
+  margin-right: 12px;
+  cursor: pointer;
+  accent-color: #d400ff;
+  width: 16px;
+  height: 16px;
+}
+
+.privacy-peer-name {
+  flex: 1;
+  font-size: 14px;
+  color: #e6e6e6;
+  font-weight: 500;
+}
+
+.privacy-peer-empty {
+  padding: 15px;
+  padding: 30px 20px;
+  text-align: center;
+  color: #707080;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.privacy-modal-actions {
+  margin-top: 20px;
+  margin-top: 30px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 25px;
+  border-top: 1px solid rgba(212, 0, 255, 0.2);
+}
+
+.privacy-btn {
+  padding: 10px 20px;
+  padding: 12px 28px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+.privacy-btn-primary {
+  background: linear-gradient(135deg, #d400ff, #9c27b0);
+        color: #fff;
+        border: none;
+        box-shadow: 0 6px 20px rgba(212, 0, 255, 0.3);
+}
+
+.privacy-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 10px 30px rgba(212, 0, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.privacy-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.privacy-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.privacy-btn-primary:hover {
+  box-shadow: 0 4px 12px rgba(212, 0, 255, 0.3);
+
+}
+
+.privacy-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #b0b0c0;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.privacy-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #e6e6e6;
+}
+
+.privacy-loading {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2.5px solid rgba(212, 0, 255, 0.3);
+  border-top-color: #d400ff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Scrollbar styling */
+.privacy-modal-content::-webkit-scrollbar,
+.privacy-search-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.privacy-modal-content::-webkit-scrollbar-track,
+.privacy-search-results::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+}
+
+.privacy-modal-content::-webkit-scrollbar-thumb,
+.privacy-search-results::-webkit-scrollbar-thumb {
+  background: rgba(212, 0, 255, 0.4);
+    background: linear-gradient(180deg, rgba(212, 0, 255, 0.4), rgba(212, 0, 255, 0.2));
+  border-radius: 3px;
+}
+
+.privacy-modal-content::-webkit-scrollbar-thumb:hover,
+.privacy-search-results::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 0, 255, 0.6);
+  background: linear-gradient(180deg, rgba(212, 0, 255, 0.7), rgba(212, 0, 255, 0.5));
+  background: linear-gradient(180deg, rgba(212, 0, 255, 0.7), rgba(212, 0, 255, 0.5));
+}
+
+/* Small screens */
+@media (max-width: 520px) {
+  .privacy-btn-floating {
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
+  }
+  
+  .privacy-modal-content {
+    padding: 20px;
+    max-width: 95%;
+  }
+  
+  .privacy-modal-title {
+    font-size: 18px;
+  }
+}
+
+/* New floating privacy manager panel */
+#privacy-manager-float {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  width: 320px;
+  max-width: calc(100% - 40px);
+  background: rgba(20, 25, 30, 0.95); /* semi-transparent dark */
+  border-radius: 15px;
+  border: 1px solid rgba(0,0,0,0.5);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  padding: 14px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+#privacy-manager-float .pm-header { margin-bottom: 8px; }
+#privacy-manager-float .pm-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  -webkit-text-stroke: 1px #d400ff; /* narrow magenta text-stroke */
+  text-shadow: 0 0 8px rgba(212,0,255,0.12);
+}
+
+/* Options: hide default radios, use button-like controls */
+.pm-options { display: flex; gap: 8px; margin: 10px 0; }
+.pm-option-btn {
+  flex: 1;
+  background: rgba(255,255,255,0.02);
+  color: #d0d0d8;
+  border: 1px solid rgba(255,255,255,0.03);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.pm-option-btn.active {
+  background: linear-gradient(90deg, rgba(212,0,255,0.12), rgba(156,39,176,0.08));
+  color: #fff;
+  border-color: rgba(212,0,255,0.25);
+  box-shadow: 0 6px 18px rgba(212,0,255,0.06) inset;
+}
+.pm-option-btn:focus { outline: none; }
+
+.pm-friends { margin-top: 8px; display: none; }
+.pm-friends[aria-hidden="false"] { display: block; }
+
+/* Tuck search neatly */
+.privacy-search-box { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); background: rgba(0,0,0,0.35); color: #e6e6e6; font-size: 13px; }
+.privacy-search-results { margin-top: 8px; max-height: 180px; overflow-y: auto; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03); background: rgba(0,0,0,0.25); }
+.privacy-peer-item { padding: 8px 10px; display:flex; align-items:center; gap:10px; border-bottom:1px solid rgba(255,255,255,0.02); }
+.privacy-peer-item:last-child { border-bottom: none; }
+.privacy-peer-name { color:#ddd; font-size:13px; }
+
+/* Small, dark-themed action buttons */
+.pm-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+.pm-action { padding:6px 10px; border-radius:8px; font-size:13px; cursor:pointer; border:1px solid rgba(255,255,255,0.04); }
+.pm-action-cancel { background: rgba(255,255,255,0.02); color:#bdbdc6; }
+.pm-action-save { background: linear-gradient(90deg, rgba(212,0,255,0.12), rgba(156,39,176,0.08)); color:#fff; border-color: rgba(212,0,255,0.18); }
+
+/* keep small-screen adjustments */
+@media (max-width: 420px) {
+  #privacy-manager-float { width: 92%; right: 4%; bottom: 16px; padding: 12px; }
+  .pm-title { font-size: 15px; }
+}
+
+/* FORCE FLOATING PRIVACY MANAGER */
+.privacy-manager-container {
+    position: fixed !important;
+    bottom: 20px !important;
+    right: 20px !important;
+    width: 320px;
+    background-color: #1a1d21 !important; /* Dark background */
+    border: 1px solid #333 !important;
+    border-radius: 12px;
+    padding: 20px;
+    z-index: 9999;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    color: white !important;
+}
+
+/* THE NEON TITLE FIX */
+.privacy-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: white;
+    -webkit-text-stroke: 1px #FF00FF; /* Narrow Magenta Glow */
+}
+
+/* FIXING THE UGLY BUTTONS */
+.privacy-option-btn {
+    background: #2a2e35;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 8px 12px;
+    margin: 4px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.privacy-option-btn:hover {
+    border-color: #FF00FF;
+    color: white;
+}
+
+/* INPUT BOX FIX */
+.privacy-manager-container input {
+    background: #000 !important;
+    color: white !important;
+    border: 1px solid #444 !important;
+    padding: 5px;
+    width: 100%;
+}
+
+/* ===== New Privacy UI (Centered content, fixed right-center) ===== */
+.privacy-fixed-wrapper {
+  position: fixed !important;
+  right: 28px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 100000 !important;
+  pointer-events: auto !important;
+}
+
+.privacy-panel {
+  background: rgba(15,17,18,0.96) !important; /* muted dark */
+  border: 1px solid #2b2b2b !important;
+  border-radius: 14px !important;
+  width: 580px !important; /* panel width; content centered inside */
+  max-width: calc(100vw - 56px) !important;
+  padding: 32px 40px 600px 40px !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.7) !important;
+  color: #e8e8e8 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.privacy-center { 
+  text-align: center !important; 
+  margin: 0 auto !important;
+  width: 100% !important;
+}
+
+.privacy-heading {
+  margin: 0 0 6px 0 !important;
+  font-size: 34px !important;
+  font-weight: 600 !important;
+  color: #fff !important;
+  -webkit-text-stroke: 1px #d400ff !important; /* narrow magenta stroke */
+  text-stroke: 1px #d400ff !important;
+  line-height: 1 !important;
+}
+
+.privacy-sub { margin: 6px 0 18px 0 !important; color: #9a9aa3 !important; font-size: 16px !important; }
+
+.privacy-options { display: flex !important; justify-content: center !important; gap: 30px !important; margin: 18px 0 28px 0 !important; align-items: center !important; }
+
+.privacy-option-radio {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+.privacy-radio {
+  display: none !important;
+}
+
+.privacy-radio-circle {
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.2s ease !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.privacy-radio-circle::after {
+  content: '' !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: #d400ff !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.privacy-radio:checked + .privacy-radio-circle {
+  border-color: #d400ff !important;
+  background: rgba(212, 0, 255, 0.15) !important;
+}
+
+.privacy-radio:checked + .privacy-radio-circle::after {
+  opacity: 1 !important;
+}
+
+.privacy-option-label {
+  color: #e6eef6 !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  transition: color 0.2s ease !important;
+}
+
+.privacy-option-radio:hover .privacy-option-label {
+  color: #fff !important;
+}
+
+.privacy-option-radio:hover .privacy-radio-circle {
+  border-color: rgba(212, 0, 255, 0.5) !important;
+  background: rgba(212, 0, 255, 0.1) !important;
+}
+
+.privacy-search-wrap { 
+  margin: 24px auto 18px auto !important; 
+  display: flex !important; 
+  justify-content: center !important;
+  gap: 14px !important;
+  width: 100% !important;
+  padding: 0 20px !important;
+  box-sizing: border-box !important;
+}
+
+.privacy-search-input {
+  flex: 1 !important;
+  max-width: 380px !important;
+  padding: 16px 20px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #e6eef6 !important;
+  font-size: 15px !important;
+  font-family: inherit !important;
+  transition: all 0.2s ease !important;
+  height: 48px !important;
+}
+
+.privacy-search-input::placeholder { 
+  color: rgba(230, 238, 246, 0.5) !important; 
+  opacity: 1 !important; 
+}
+
+.privacy-search-input:focus {
+  outline: none !important;
+  border-color: rgba(212, 0, 255, 0.5) !important;
+  background: rgba(59, 130, 246, 0.2) !important;
+  box-shadow: 0 0 15px rgba(212, 0, 255, 0.3) !important;
+}
+
+.privacy-search-btn {
+  width: 48px !important;
+  height: 48px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.4), rgba(76, 175, 80, 0.25)) !important;
+  border: 2px solid rgba(76, 175, 80, 0.7) !important;
+  color: #fff !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  flex-shrink: 0 !important;
+}
+
+.privacy-search-btn:hover {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.55), rgba(76, 175, 80, 0.4)) !important;
+  border-color: rgba(76, 175, 80, 0.9) !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 8px 25px rgba(76, 175, 80, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+}
+
+.privacy-search-btn:active {
+  transform: scale(0.95) !important;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.privacy-actions { 
+  display: flex !important; 
+  justify-content: center !important; 
+  gap: 24px !important; 
+  margin-top: 32px !important;
+  width: 100% !important;
+  flex-wrap: wrap !important;
+}
+
+.privacy-action { 
+  color: #fff !important; 
+  text-decoration: none !important; 
+  padding: 12px 36px !important; 
+  border-radius: 8px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 44px !important;
+}
+
+.privacy-action:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: #fff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1) !important;
+}
+
+.privacy-action:active {
+  transform: translateY(0) !important;
+  color: #fff !important;
+}
+
+.privacy-action:visited {
+  color: #fff !important;
+}
+
+.privacy-action.primary { 
+  background: linear-gradient(135deg, rgba(212, 0, 255, 0.25), rgba(156, 39, 176, 0.15)) !important; 
+  border-color: rgba(212, 0, 255, 0.5) !important;
+  color: #fff !important; 
+  box-shadow: 0 2px 8px rgba(212, 0, 255, 0.2) !important;
+}
+
+.privacy-action.primary:hover {
+  background: linear-gradient(135deg, rgba(212, 0, 255, 0.35), rgba(156, 39, 176, 0.25)) !important;
+  border-color: rgba(212, 0, 255, 0.7) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(212, 0, 255, 0.3) !important;
+}
+
+.privacy-action.primary:visited {
+  color: #fff !important;
+}
+
+/* Ensure the panel remains non-intrusive on very small screens */
+@media (max-width:640px){
+  .privacy-fixed-wrapper { right: 12px !important; left: 12px !important; }
+  .privacy-panel { width: 100% !important; padding: 20px !important; }
+  .privacy-options { gap: 20px !important; }
+  .privacy-heading { font-size: 24px !important; }
+  .privacy-pill { font-size: 16px !important; padding: 14px 18px !important; }
+}

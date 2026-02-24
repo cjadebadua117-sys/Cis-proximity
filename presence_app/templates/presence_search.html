@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Peer Search - CIS-Prox{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h3 class="mb-0">
+                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="11" cy="11" r="6"></circle>
+                            <path d="M21 21l-4.35-4.35"></path>
+                        </svg>
+                        Find Your Classmates
+                    </h3>
+                    <small class="mt-2 d-block">Search for peers who are currently on campus</small>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="mb-4">
+                        <div class="input-group input-group-lg">
+                            <input type="text" name="q" class="form-control" placeholder="Search by name or username..." 
+                                   value="{{ query }}" required minlength="2">
+                            <button class="btn btn-info" type="submit">
+                                <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <circle cx="11" cy="11" r="6"></circle>
+                                    <path d="M21 21l-4.35-4.35"></path>
+                                </svg>
+                                Search
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if error %}
+                    <div class="alert alert-warning" role="alert">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    {# --- Search Results Section: Always directly under search bar --- #}
+                    {% if query %}
+                        {% if results %}
+                        <div class="alert alert-success">
+                            <strong>Found {{ results|length }} active peer(s) matching "{{ query }}"</strong>
+                        </div>
+                        <div class="row">
+                            {% for result in results %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card border-success">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center">
+                                            {% if result.user.profile.profile_picture %}
+                                            <img src="{{ result.user.profile.profile_picture.url }}" class="rounded-circle me-3" width="60" height="60">
+                                            {% else %}
+                                            <div class="rounded-circle bg-secondary me-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; color: white; font-weight: bold;">
+                                                {{ result.user.first_name|first|default:result.user.username|first }}
+                                            </div>
+                                            {% endif %}
+                                            <div class="flex-grow-1">
+                                                <h5 class="card-title mb-0">{{ result.user.first_name }} {{ result.user.last_name }}</h5>
+                                                <small class="text-muted">@{{ result.user.username }}</small>
+                                            </div>
+                                            <!-- Online status dot -->
+                                            <span class="online-dot ms-2" title="Online"></span>
+                                        </div>
+                                        <hr>
+                                        <p class="mb-2"><strong><svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg> Location:</strong> {{ result.room.name }}</p>
+                                        <p class="mb-2"><strong><svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 3"></path></svg> Duration:</strong> {{ result.duration }} minutes</p>
+                                        <p class="mb-0 text-muted"><small>Signed in: {{ result.signed_in_at|date:"h:i A" }}</small></p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info" role="alert">
+                            <strong>No Results</strong><br>
+                            No classmates matching "{{ query }}" are currently on campus.
+                            Try searching with a different name or check back later.
+                        </div>
+                        {% endif %}
+                    {% endif %}
+
+                    {# --- Location Privacy and How to Use: Always at the bottom --- #}
+                    {% if not query %}
+                    <div class="alert alert-light" role="alert">
+                        <strong>
+                            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <path d="M9 21h6v-1H9v1zm3-20C7.58 1 4 4.58 4 9c0 3.74 3.28 6.86 7 7.73V20h2v-3.27c3.72-.87 7-3.99 7-7.73 0-4.42-3.58-8-8-8zM11 6h2v6h-2V6z"/>
+                            </svg>
+                            How to use:
+                        </strong><br>
+                        Type at least 2 characters to search for classmates who are currently signed in to CIS-Prox.
+                        You'll see their current location (room/lab) and how long they've been signed in.
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-4">
+                        <a href="{% url 'presence_dashboard' %}" class="btn btn-secondary">
+                            ← Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load utils_tags %}
+
+{% block title %}Instructor Dashboard | CIS-Prox{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    <h1 style="text-align: center; margin-bottom: 1rem;">Instructor Dashboard</h1>
+    
+    <!-- Instructor Current Presence -->
+    {% if instructor_presence and instructor_presence.current_room %}
+        <div class="dark-bg-container" style="margin-bottom: 1.5rem;">
+            <h3 style="color: var(--primary-crest); margin-bottom: 0.5rem;">✓ Currently Signed In</h3>
+            <p class="dark-status">
+                <strong>Room:</strong> {{ instructor_presence.current_room.name }}<br>
+                <strong>Time:</strong> {{ current_time_ph|date:"h:i:s A" }} - {{ current_time_ph|date:"l, F d, Y" }} (GMT+8)<br>
+                <strong>Status:</strong> ONLINE
+            </p>
+        </div>
+    {% endif %}
+    
+    <!-- Instructor Info -->
+    <div class="quick-grid" style="margin-bottom:1rem;">
+        <div class="quick-card">
+            <h3>Your Section</h3>
+            <p>{{ instructor_profile.section|default:'—' }}</p>
+        </div>
+        <div class="quick-card">
+            <h3>Total Students</h3>
+            <p>{{ students|length }}</p>
+        </div>
+    </div>
+
+    <!-- Network Status -->
+    {% if network_status == 'online' %}
+        <div class="alert alert-success">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            You are on the University Network.
+        </div>
+    {% else %}
+        <div class="alert alert-error">
+            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            You are NOT on the University Network. Some features may be limited.
+        </div>
+    {% endif %}
+
+    <!-- Network override toggle -->
+    <form method="POST" style="margin-bottom:1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="toggle_network_override" value="1" />
+        <button type="submit" class="btn btn-small" style="background: #2563eb; color:#fff;">
+            {% if instructor_profile.allow_off_network %}Disable{% else %}Enable{% endif %} off-network sign-in override
+        </button>
+    </form>
+
+    <!-- Heatmap of current room presence -->
+    {% if heatmap_students and instructor_presence and instructor_presence.current_room %}
+        <div class="card" style="margin-bottom:1rem;">
+            <h3>Presence Heatmap ({{ instructor_presence.current_room.name }})</h3>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:0.5rem;">
+                {% for sp in heatmap_students %}
+                    <div style="background:#2563eb;color:#fff;padding:0.5rem;border-radius:4px;text-align:center;">
+                        {{ sp.student.get_short_name|default:sp.student.username }}
+                    </div>
+                {% endfor %}
+                {% comment %}fill out remaining slots with blank blocks{% endcomment %}
+                {% for _ in heatmap_padding|times %}
+                    <div style="background:#334155;height:2rem;border-radius:4px;"></div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Instructor Tools -->
+
+    <!-- Broadcast announcement -->
+    <div class="card" style="margin-bottom:1rem;">
+        <h3>Broadcast to room</h3>
+        <form method="POST">
+            {% csrf_token %}
+            <textarea name="broadcast_message" rows="2" style="width:100%;padding:0.5rem;margin-bottom:0.5rem;" placeholder="Enter announcement..."></textarea>
+            <button type="submit" class="btn btn-auth">Send</button>
+        </form>
+    </div>
+
+    <!-- Instructor Tools -->
+    <div class="tool-grid" style="margin-bottom:1.25rem;">
+        <a href="{% url 'instructor_manage_signout' %}" style="text-decoration:none"><div class="tool-item manage"><svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M3 6h18" stroke="#483D8B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><h4>Manage Sign-Out</h4></div></a>
+        <a href="{% url 'attendance_dashboard' %}" style="text-decoration:none"><div class="tool-item records"><svg class="icon" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#2196f3" stroke-width="2"/></svg><h4>View Attendance</h4></div></a>
+        <a href="{% url 'laboratory_history' %}" style="text-decoration:none"><div class="tool-item records"><svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M3 12h18" stroke="#FF00FF" stroke-width="2"/></svg><h4>Lab History</h4></div></a>
+        <a href="{% url 'instructor_dashboard' %}" style="text-decoration:none"><div class="tool-item force"><svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M12 2v20" stroke="#f44336" stroke-width="2"/></svg><h4>Force Sign-out</h4></div></a>
+        <a href="{% url 'home' %}" style="text-decoration:none"><div class="tool-item settings"><svg class="icon" viewBox="0 0 24 24" fill="none"><path d="M12 8v8" stroke="#2E8B57" stroke-width="2"/></svg><h4>Settings</h4></div></a>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+        <div style="margin-bottom: 2rem;">
+            {% for message in messages %}
+                <div style="background: {% if message.tags == 'success' %}rgba(47,133,90,0.1){% elif message.tags == 'error' %}rgba(192,57,43,0.1){% else %}rgba(212,165,86,0.1){% endif %}; 
+                            border-left: 4px solid {% if message.tags == 'success' %}var(--success){% elif message.tags == 'error' %}var(--danger){% else %}var(--warning){% endif %}; 
+                            padding: 1rem; border-radius: 5px; margin-bottom: 1rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- FRC Attendance Marking -->
+    <div class="card">
+        <h2 style="text-align: left; margin-bottom: 0.5rem; display:flex;align-items:center; justify-content:space-between;">
+            <span>Flag Raising Ceremony (FRC) Attendance</span>
+            <svg width="40" height="40" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="4"></circle>
+                <circle cx="18" cy="18" r="16" fill="none" stroke="#4caf50" stroke-width="4" stroke-dasharray="100" stroke-dashoffset="{{ frc_percentage|default:0|floatformat:0 }}" transform="rotate(-90 18 18)"></circle>
+            </svg>
+        </h2>
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">Tap a student to toggle present/absent</p>
+        {% if students %}
+            <div class="student-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:1rem;">
+                {% for student_presence in students %}
+                    {% with frc_record=frc_records|get_item:student_presence.student.id %}
+                    <div class="frc-card" data-student-id="{{ student_presence.student.id }}" style="background: var(--glass-bg);backdrop-filter:var(--glass-backdrop);border:1px solid {% if frc_record %}{% if frc_record.present %}#4caf50{% else %}#f44336{% endif %}{% else %}rgba(255,255,255,0.2){% endif %};border-radius:12px;padding:1rem;text-align:center;cursor:pointer;">
+                        <div style="font-size:2rem;">👤</div>
+                        <div style="margin-top:0.5rem;font-size:0.85rem;">{{ student_presence.student.get_full_name|default:student_presence.student.username }}</div>
+                        <div class="status-indicator" style="width:8px;height:8px;border-radius:50%;background:{% if frc_record %}{% if frc_record.present %}#4caf50{% else %}#f44336{% endif %}{% else %}rgba(255,255,255,0.2){% endif %};margin:0.5rem auto 0;"></div>
+                    </div>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+            <form id="frc-toggle-form" method="POST" style="display:none;">
+                {% csrf_token %}
+                <input type="hidden" name="attended" value="toggle">
+            </form>
+            <script>
+                document.addEventListener('DOMContentLoaded', function(){
+                    const templateUrl = '{% url "instructor_mark_frc" 0 %}';
+                    document.querySelectorAll('.frc-card').forEach(card=>{
+                        card.addEventListener('click',()=>{
+                            const sid = card.dataset.studentId;
+                            const form = document.getElementById('frc-toggle-form');
+                            // replace the placeholder segment /0/ with the real id
+                            form.action = templateUrl.replace(/\/0\//, '/' + sid + '/');
+                            form.submit();
+                        });
+                    });
+                });
+            </script>
+        {% else %}
+            <div style="background: var(--bg-muted); padding: 1.5rem; border-radius: 5px; text-align: center;">
+                <p style="color: var(--text-muted); margin: 0;">No students in your section yet.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Back Link -->
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{% url 'home' %}" style="color: var(--text-muted); text-decoration: none; font-weight: bold;">← Back to Home</a>
+    </div>
+</div>
+
+<script>
+    // Django template filter helper for dictionary access
+    function get_item(dict, key) {
+        return dict[key];
+    }
+</script>
+{% endblock %}

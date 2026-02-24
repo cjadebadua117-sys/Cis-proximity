@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block title %}Enroll | CIS-Prox{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="max-width: 600px; margin: 0 auto;">
+        <h1>
+            <svg class="icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                <path d="M9 2h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v2h6V4H9z"/>
+            </svg>
+            {% if is_instructor %}Set Your Instructor Assignment{% else %}Enroll in Your Section{% endif %}
+        </h1>
+        <p class="subtitle">
+            {% if is_instructor %}Choose the section you'll advise or mark yourself as a subject instructor{% else %}Select your year and section to access the check-in system{% endif %}
+        </p>
+
+
+        <div class="card" style="margin-top: 2rem;">
+            <h2>{% if is_instructor %}Your Assignment Information{% else %}Your Section Information{% endif %}</h2>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">
+                {% if is_instructor %}
+                    Pick the section you will be responsible for, or leave blank to act as a general subject instructor.
+                {% else %}
+                    Once you enroll, classmates will be able to find you when you enter rooms or labs. 
+                    Your section helps organize the student directory and verify your identity.
+                {% endif %}
+            </p>
+
+            {% if is_enrolled %}
+                <div style="background: rgba(47,133,90,0.06); border-left: 4px solid var(--success); padding: 1.5rem; border-radius: 5px; margin-bottom: 2rem;">
+                    <h3 style="color: var(--success);">
+                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                            <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Already Enrolled
+                    </h3>
+                    <p style="color: #1b5e20;">
+                        You are already enrolled in a section. Redirecting to dashboard...
+                    </p>
+                </div>
+            {% else %}
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <div class="form-group" style="margin-bottom: 2rem;">
+                        <label for="id_section" style="font-weight: bold; display: block; margin-bottom: 0.5rem;">
+                            {% if is_instructor %}Select assignment{% else %}{{ form.section.label }}{% endif %}
+                        </label>
+                        {% if is_instructor %}
+                            <select name="section" id="id_section" class="form-control">
+                                <option value="">Subject Instructor</option>
+                                {% for sec in form.fields.section.queryset %}
+                                    <option value="{{ sec.pk }}" {% if form.section.value|stringformat:"s" == sec.pk|stringformat:"s" %}selected{% endif %}>
+                                        {{ sec }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        {% else %}
+                            {{ form.section }}
+                        {% endif %}
+                        {% if form.section.errors %}
+                            <div style="color: var(--danger); margin-top: 0.5rem;">
+                                {{ form.section.errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div style="background: var(--bg-muted); padding: 1rem; border-radius: 5px; margin-top: 1rem; font-size: 0.9rem; color: var(--text-muted);">
+                            <strong>Available Sections:</strong>
+                            <ul style="margin-top: 0.5rem; margin-left: 1.5rem;">
+                                <li><strong>First Year:</strong> A, B, C</li>
+                                <li><strong>Second Year:</strong> A, B</li>
+                                <li><strong>Third Year:</strong> SMP (Service Management Program), BA (Business Administration)</li>
+                                <li><strong>Fourth Year:</strong> A</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success" style="width: 100%; padding: 1rem; font-size: 1.1rem;">
+                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {% if is_instructor %}Save Assignment{% else %}Enroll Now{% endif %}
+                    </button>
+                </form>
+
+                <div style="text-align: center; margin-top: 2rem;">
+                    <a href="/" style="color: var(--text-muted); text-decoration: none;">← Back to Home</a>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="card" style="margin-top: 2rem; background: #1e293b; color: #cbd5e1;">
+            <h3 style="color: #ffffff;">
+                <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z"/>
+                </svg>
+                Why do I need to enroll?
+            </h3>
+            <ul style="color: #cbd5e1; line-height: 1.8;">
+                {% if is_instructor %}
+                    <li><strong>Instructor Role:</strong> Assigning a section lets students know who their teacher/advisor is</li>
+                    <li><strong>Directory Access:</strong> Students can find and contact you through the system</li>
+                    <li><strong>Network Grouping:</strong> Sections connect you with colleagues teaching the same year/program</li>
+                    <li><strong>Administrative Compliance:</strong> Assignment keeps your profile up to date for school records</li>
+                {% else %}
+                    <li><strong>Student Identification:</strong> Your section proves you are a legitimate student</li>
+                    <li><strong>Directory Access:</strong> Classmates can find and contact you through the system</li>
+                    <li><strong>Network Grouping:</strong> Sections connect you with peers in your year and program</li>
+                    <li><strong>Administrative Compliance:</strong> Enrollment keeps your record aligned with school policies</li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Find Peers | CIS-Prox{% endblock %}
+
+{% block content %}
+<div class="container search-page">
+    <!-- main search column -->
+    <div class="main-content">
+        <h1>
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="6"></circle>
+                <path d="M21 21l-4.35-4.35"></path>
+            </svg>
+            Find Your Peers
+        </h1>
+        <p class="subtitle">Search for classmates and their real-time locations</p>
+        <p style="margin-top:0.5rem;"><a href="#how-it-works" class="btn btn-sm">Learn how it works</a></p>
+
+        <div class="search-container">
+            <form method="GET" class="search-form">
+                <input 
+                    type="text" 
+                    name="q" 
+                    placeholder="Search by username (e.g., 'Cjade')..." 
+                    value="{{ query }}"
+                    autocomplete="off"
+                >
+                <button type="submit" class="btn">Search</button>
+            </form>
+        </div>
+
+        <!-- Students Currently Online - visible at all times -->
+        <div class="online-section">
+            <h3 style="color: var(--text-on-dark); margin-bottom: 1rem; font-size: 1.15rem;">🌐 Students Currently Online</h3>
+            {% if online_students %}
+                <div class="online-list">
+                    {% for presence in online_students %}
+                        {% if presence.student != request.user %}  {# skip yourself #}
+                        <div class="online-item">
+                            <span class="status-dot status-online"></span>
+                            <div class="online-info">
+                                <div class="online-name">{{ presence.student.username }}</div>
+                                {% if presence.current_room %}
+                                    <small style="color: var(--text-muted);">in {{ presence.current_room.name }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p style="color: var(--text-muted);">No students are currently online.</p>
+            {% endif %}
+        </div>
+
+    {% if query %}
+        <div class="results">
+            {% if results %}
+                <h3 style="margin-bottom: 1rem; color: var(--text-on-dark);">
+                    Found {{ results|length }} student{{ results|length|pluralize }}:
+                </h3>
+                {% for presence in results %}
+                    <div class="result-item">
+                        <div>
+                            <div class="student-name">{{ presence.student.username }}</div>
+                            {% if presence.current_room %}
+                                <div style="color: var(--text-muted); margin-top: 0.3rem;">
+                                    Currently in: <span class="room-info">
+                                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor">
+                                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
+                                        </svg>
+                                        {{ presence.current_room.name }}
+                                    </span>
+                                    {% if presence.current_room.description %}
+                                        <br><small style="color: var(--text-muted);">{{ presence.current_room.description }}</small>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div style="color: var(--text-muted); margin-top: 0.3rem;">Location not set</div>
+                            {% endif %}
+                            <div style="color: var(--text-muted); margin-top: 0.3rem; font-size: 0.9rem;">
+                                Last seen: {{ presence.last_seen|date:"h:i:s A" }}
+                            </div>
+                        </div>
+                        <div>
+                            {% if presence.is_online %}
+                                <span class="status-badge status-online">ONLINE</span>
+                            {% else %}
+                                <span class="status-badge status-offline">OFFLINE</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    No students found matching "{{ query }}". Please try a different search term.
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div style="text-align: center; margin-top: 2rem;">
+            <p style="color: var(--text-muted); font-size: 1.1rem;">Enter a username above to find your classmates.</p>
+        </div>
+    {% endif %}
+
+        <!-- Location Privacy Section -->
+        <div class="privacy-card">
+            {% include 'privacy_manager.html' %}
+        </div>
+
+        <!-- How It Works Section -->
+        <!-- anchor target for smooth scroll from top link -->
+        <div class="info-section" id="how-it-works">
+            <h2>How It Works</h2>
+            
+            <div class="info-grid grid-steps">
+                <div class="info-card">
+                    <h3>Select your location</h3>
+                    <p>Select your current room or laboratory from the dropdown on the dashboard.</p>
+                </div>
+                <div class="info-card">
+                    <h3>Click "Enter Room"</h3>
+                    <p>Log your presence into the system.</p>
+                </div>
+                <div class="info-card">
+                    <h3>Be discoverable</h3>
+                    <p>Your location will be visible to classmates searching for you (based on your privacy settings).</p>
+                </div>
+                <div class="info-card">
+                    <h3>Auto-update status</h3>
+                    <p>Your status automatically updates to "Offline" if you disconnect from University Wi-Fi.</p>
+                </div>
+                <div class="info-card">
+                    <h3>Exit when done</h3>
+                    <p>Click "Exit Room" when you leave the location.</p>
+                </div>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; margin-top: 2rem;">© 2026 CIS-Prox | Student Presence & Real-Time Locating System | DMMMSU Information Systems</p>
+        </div>
+    </div>
+
+
+</div>
+{% endblock %}

@@ -1,0 +1,207 @@
+{% load static %}
+{% load utils_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CIS-Prox | Student Presence System{% endblock %}</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <!-- Core Stylesheet - Professional & Modern Design -->
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <!-- Privacy and other support styles -->
+    <link rel="stylesheet" href="{% static 'css/privacy.css' %}?v=2">
+    {% block extra_css %}
+    <style>
+/* Professional UI Reset - No Glows */
+.auth-container {
+    background-color: #1e293b; /* Solid Navy */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 450px;
+    width: 100%;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+/* page wrapper to center auth forms */
+.auth-page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.input-group label {
+    display: block;
+    color: #94a3b8; /* Muted Slate */
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+
+.auth-input {
+    width: 100%;
+    background: #0f172a; /* Dark Navy Background */
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #ffffff;
+    padding: 12px 16px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.auth-input:focus {
+    border-color: #2563eb; /* Cobalt Blue Border on Focus */
+    outline: none;
+}
+
+/* Professional CTA Button */
+.btn-auth {
+    background-color: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+    padding: 14px;
+    border-radius: 6px;
+    width: 100%;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background 0.2s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-auth:hover {
+    background-color: #1d4ed8;
+}
+
+/* password wrapper for toggle */
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: #94a3b8;
+}
+
+/* simple text utilities used on auth pages */
+.text-xs { font-size: 0.75rem; }
+.text-sm { font-size: 0.9rem; }
+.text-white { color: #ffffff; }
+.text-slate-400 { color: #94a3b8; }
+.text-blue-500 { color: #2563eb; }
+.font-bold { font-weight: 700; }
+.text-center { text-align: center; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-8 { margin-bottom: 2rem; }
+.mt-8 { margin-top: 2rem; }
+.hover\:underline:hover { text-decoration: underline; }
+.text-3xl { font-size: 1.875rem; }
+.space-y-6 > * + * { margin-top: 1.5rem; }
+.text-red-500 { color: #f56565; }
+.mt-1 { margin-top: 0.25rem; }
+</style>
+    {% endblock %}
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header>
+        <nav>
+            <div class="nav-container">
+                <!-- Logo (role‑based title) -->
+                <a href="/" class="logo">
+                    <span class="logo-container">
+                        <span class="logo-cis">CIS</span>
+                        <span class="logo-prox">Prox</span>
+                    </span>
+                    {% if user.is_authenticated %}
+                        {% if is_instructor %}
+                            <small class="logo-sub">Instructor Management System</small>
+                        {% else %}
+                            <small class="logo-sub">Student Presence System</small>
+                        {% endif %}
+                    {% else %}
+                        <small class="logo-sub">Presence System</small>
+                    {% endif %}
+                </a>
+
+                <!-- Mobile Menu Toggle (SVG icon, no emojis) -->
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+
+                <!-- Navigation Links -->
+                <ul class="nav-links" id="navLinks">
+                    <li><a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Home</a></li>
+                    
+                    {% if user.is_authenticated %}
+                        <li><a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">Dashboard</a></li>
+                        
+                        {% if user.instructor_profile %}
+                            {% url 'instructor_dashboard' as instructor_dashboard_url %}
+                            {% url 'instructor_manage_signout' as instructor_manage_url %}
+                            <li><a href="{{ instructor_dashboard_url }}" class="nav-link accent {% if request.path == instructor_dashboard_url %}active{% endif %}">FRC</a></li>
+                            <li><a href="{{ instructor_manage_url }}" class="nav-link accent {% if request.path == instructor_manage_url %}active{% endif %}">Manage</a></li>
+                            <li><a href="/laboratory/history/" class="nav-link accent {% if request.path == '/laboratory/history/' %}active{% endif %}">Lab History</a></li>
+                        {% else %}
+                            <li><a href="/search/" class="nav-link {% if request.path == '/search/' %}active{% endif %}">Find Peers</a></li>
+                            <li><a href="/attendance/" class="nav-link success {% if request.path == '/attendance/' %}active{% endif %}">Attendance</a></li>
+                        {% endif %}
+                        
+                        <li><a href="/profile/" class="nav-link user {% if request.path == '/profile/' or request.path|startswith:'/profile/' %}active{% endif %}">{{ request.user.get_full_name|default:request.user.username }}</a></li>
+                        <li><a href="/logout/" class="btn-logout">Logout</a></li>
+                    {% else %}
+                        <li><a href="/login/" class="nav-link {% if '/login' in request.path %}active{% endif %}">Login</a></li>
+                        <li><a href="/register/" class="nav-link {% if '/register' in request.path %}active{% endif %}">Register</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 CIS-Prox | Student Presence & Real-Time Locating System | DMMMSU Information Systems</p>
+    </footer>
+
+    <script>
+        // Mobile menu toggle functionality
+        document.getElementById('menuToggle')?.addEventListener('click', function() {
+            const navLinks = document.getElementById('navLinks');
+            navLinks.classList.toggle('active');
+            this.setAttribute('aria-expanded', navLinks.classList.contains('active'));
+        });
+
+        // Close menu when a link is clicked
+        document.querySelectorAll('.nav-links a').forEach(link => {
+            link.addEventListener('click', function() {
+                document.getElementById('navLinks').classList.remove('active');
+                document.getElementById('menuToggle').setAttribute('aria-expanded', 'false');
+            });
+        });
+    </script>
+</body>
+</html>

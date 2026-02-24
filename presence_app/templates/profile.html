@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile | CIS-Prox{% endblock %}
+
+{% block content %}
+
+<div class="container profile-container">
+
+<div class="profile-banner">
+    <div class="profile-banner-inner">
+        <div class="profile-avatar-glow">
+            <div class="profile-img placeholder profile-img-glow">
+                <!-- empty placeholder, icon removed -->
+            </div>
+        </div>
+        <div class="profile-header-info">
+            <h1 class="profile-header-name">
+                {{ profile_user.get_full_name|default:profile_user.username }}
+                {% if presence and presence.is_online %}
+                    <span class="status-pill online-pill"><span class="online-dot"></span> Online</span>
+                {% elif presence %}
+                    <span class="status-pill offline-pill">Offline</span>
+                {% endif %}
+            </h1>
+            <div class="profile-header-username">@{{ profile_user.username }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="profile-main-grid">
+    <!-- Left Sidebar: Identity (sticky) -->
+    <div class="profile-sidebar">
+        <div class="profile-card info-card">
+            <h3><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="currentColor"><path d="M9 2h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v2h6V4H9z"/></svg> Basic Information</h3>
+            <p><strong>Email:</strong> {{ profile_user.email|default:"Not provided" }}</p>
+            <p><strong>Full Name:</strong> {{ profile_user.get_full_name|default:"Not provided" }}</p>
+            {% if profile.phone_number %}<p><strong>Phone:</strong> {{ profile.phone_number }}</p>{% endif %}
+        </div>
+        {% if presence or is_instructor %}
+        <div class="profile-card enroll-card">
+            <h3><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="currentColor"><path d="M12 2L1 7l11 5 9-4.09V17h2V7L12 2zM11 12.5V22h2v-9.5l7-3.18V6l-9 4-9-4v3.32z"/></svg> {% if is_instructor %}Instructor Info{% else %}Enrollment{% endif %}</h3>
+            {% if is_instructor %}
+                {% if instructor_profile_obj and instructor_profile_obj.section %}
+                    <p><strong>Section:</strong> {{ instructor_profile_obj.section }}</p>
+                {% else %}
+                    <p style="color: var(--text-muted);">No section assigned</p>
+                {% endif %}
+            {% else %}
+                {% if presence.section %}
+                    <p><strong>Section:</strong> {{ presence.section }}</p>
+                {% else %}
+                    <p style="color: var(--danger);">Not enrolled yet</p>
+                {% endif %}
+            {% endif %}
+            {% if presence and presence.current_room %}
+                <p><strong>Current Location:</strong> {{ presence.current_room.name }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if profile.bio %}
+        <div class="profile-card bio-card">
+            <h3><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Bio</h3>
+            <p style="color: var(--text-muted); line-height: 1.6;">{{ profile.bio }}</p>
+        </div>
+        {% endif %}
+    </div>
+    <!-- Main Content: Edit Form -->
+    <div class="profile-main-content">
+        {% if is_own_profile and form %}
+        <div class="card profile-edit-card">
+            <h2 style="margin-bottom: 1.5rem;"><svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Edit Profile</h2>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="profile-form-row">
+                    <div class="form-group">
+                        <label for="id_first_name">First Name</label>
+                        {{ form.first_name }}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_last_name">Last Name</label>
+                        {{ form.last_name }}
+                    </div>
+                </div>
+                <div class="profile-form-row">
+                    <div class="form-group">
+                        <label for="id_email">Email</label>
+                        {{ form.email }}
+                    </div>
+                    <div class="form-group">
+                        <label for="id_phone_number">Phone Number</label>
+                        {{ form.phone_number }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="id_bio">Bio (max 500 characters)</label>
+                    {{ form.bio }}
+                </div>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button type="submit" class="btn btn-success profile-save-btn">✓ Save Profile</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+        <div style="text-align: left; margin-top: 2rem;">
+            <a href="/" style="color: var(--text-muted); text-decoration: none;">← Back to Home</a>
+        </div>
+    </div>
+</div>
+</div>
+
+<style>
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-crest);
+    box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 120px;
+}
+</style>
+{% endblock %}

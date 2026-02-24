@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Presence Dashboard - CIS-Prox{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1 class="mb-2">CIS-Prox Dashboard</h1>
+            <p class="text-muted">Your presence, attendance, and activity hour summary</p>
+            <hr>
+        </div>
+    </div>
+
+    <!-- Network Status & Active Session -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card {% if active_session %}border-success{% else %}border-secondary{% endif %}">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        {% if active_session %}
+                            <span class="live-badge"><span class="live-dot pulse"></span> Currently Signed In</span>
+                        {% else %}
+                            <span class="live-badge"><span class="live-dot" style="background:#ccc"></span> Not Currently Signed In</span>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if active_session %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Location:</strong> {{ active_session.room.name }}</p>
+                            <p><strong>Duration:</strong> {{ active_session.duration_minutes }} minutes</p>
+                            <p><strong>Signed In:</strong> {{ active_session.signed_in_at|date:"M d, Y h:i A" }}</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <a href="{% url 'presence_signout' %}" class="btn btn-danger">
+                                Sign Out
+                            </a>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <strong>
+                            <svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z"/>
+                            </svg>
+                            Visibility:
+                        </strong> Your location is visible to other students on campus.
+                    </div>
+                    {% else %}
+                    <p class="mb-3">
+                        You are not currently signed into a location. Your location is <strong>hidden</strong> from peer searches.
+                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            {% if is_on_campus %}
+                            <button type="button" class="btn-modern" onclick="startSignin(this, '{% url 'presence_signin' %}')"><span class="spinner"></span><span class="btn-text">Sign In to a Location</span></button>
+                            {% else %}
+                            <div class="alert alert-danger w-100 mb-0">
+                                <strong>
+                                    <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                        <path d="M10.29 3.86L1.82 18a1 1 0 00.86 1.5h18.64a1 1 0 00.86-1.5L13.71 3.86a1 1 0 00-1.72 0z"></path>
+                                        <path d="M12 9v4" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        <path d="M12 17h.01" stroke-linecap="round" stroke-linejoin="round"></path>
+                                    </svg>
+                                    Off Campus
+                                </strong><br>
+                                You are not connected to campus Wi-Fi. Reconnect to sign in.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Summary -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Flag Raising Ceremony (FRC)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-12">
+                            <div class="attendance-summary" data-frc-present="{{ frc_total|add:frc_absent|add:\"-1\" }}" data-frc-total="{{ frc_total }}">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                                    <div><strong>Attended:</strong> {{ frc_total|add:frc_absent|add:"-1" }}</div>
+                                    <div><strong>Absences:</strong> {{ frc_absent }}</div>
+                                </div>
+                                <div class="attendance-bar"><div class="attendance-fill" style="width:0%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="text-muted text-center mb-0"><small>Total records: {{ frc_total }}</small></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Activity Hours</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-12">
+                            <h3>{{ activity_hours|length }}</h3>
+                            <p class="text-muted mb-0">Sessions Logged</p>
+                        </div>
+                    </div>
+                    <hr>
+                    <p class="text-muted text-center mb-0">
+                        <small>View details below or in your profile</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'presence_search' %}" class="btn btn-outline-primary w-100">
+                                Find Classmates
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'profile_view' username=user.username %}" class="btn btn-outline-secondary w-100">
+                                My Profile
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <a href="{% url 'attendance_dashboard' %}" class="btn btn-outline-info w-100">
+                                <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                    <path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 15h2V9H7v6zm4 0h2V5h-2v10zm4 0h2V11h-2v4z"/>
+                                </svg>
+                                Attendance
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Sessions -->
+    {% if session_history %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                                <h5 class="mb-0">Recent Sessions (Last 30 Days)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Location</th>
+                                <th>Signed In</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in session_history %}
+                            <tr>
+                                <td><strong>{{ session.room.name }}</strong></td>
+                                <td>{{ session.signed_in_at|date:"M d H:i" }}</td>
+                                <td>
+                                    {% if session.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        {{ session.duration_minutes }} min
+                                    {% endif %}
+                                </td>
+                                <td>
+                                        {% if session.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Closed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Activity Hours -->
+    {% if activity_hours %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Recent Activity Hour Sessions</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Signed In</th>
+                                <th>Signed Out</th>
+                                <th>Duration</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in activity_hours %}
+                            <tr>
+                                <td>{{ activity.sign_in_time|date:"M d h:i A" }}</td>
+                                <td>
+                                    {% if activity.sign_out_time %}
+                                        {{ activity.sign_out_time|date:"M d h:i A" }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if activity.duration_hours %}
+                                        {{ activity.duration_hours }} hours
+                                    {% else %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                        {% if activity.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Completed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+function startSignin(btn,url){
+  btn.classList.add('btn-loading');
+  var text = btn.querySelector('.btn-text');
+  var spinner = btn.querySelector('.spinner');
+  if(text) text.textContent='Signing in...';
+  if(spinner) spinner.style.display='inline-block';
+  setTimeout(function(){ window.location.href = url; }, 700);
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  document.querySelectorAll('[data-frc-present]').forEach(function(el){
+    var present = parseFloat(el.dataset.frcPresent)||0;
+    var total = parseFloat(el.dataset.frcTotal)||0;
+    if(total>0){
+      var pct = Math.round((present/total)*100);
+      var fill = el.querySelector('.attendance-fill');
+      if(fill){
+        fill.style.width = pct+'%';
+        if(pct<75) fill.classList.add('red');
+        else if(pct<90) fill.classList.add('amber');
+        else fill.classList.add('green');
+      }
+    }
+  });
+});
+</script>
+
+{% endblock %}

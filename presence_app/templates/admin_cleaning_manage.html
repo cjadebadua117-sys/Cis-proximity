@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Cleaning Activity | CIS-Prox{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    <h1 style="text-align: center; margin-bottom: 2rem;">
+        <svg class="icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <path d="M7 21h10v-2H7v2zm10-14h-2V5a2 2 0 00-2-2H11a2 2 0 00-2 2v2H7v2h10V7z"/>
+        </svg>
+        Manage Cleaning Activity
+    </h1>
+    
+    <!-- Staff Only Notice -->
+    {% if not user.is_staff and not user.is_superuser %}
+        <div style="background: rgba(192,57,43,0.08); border-left: 4px solid var(--danger); padding: 1.5rem; border-radius: 5px; margin-bottom: 2rem;">
+            <h3 style="color: #c62828; margin-top: 0;">
+                <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path d="M12 2a4 4 0 00-4 4v2h8V6a4 4 0 00-4-4zm6 8H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2z"/>
+                </svg>
+                Access Denied
+            </h3>
+            <p style="color: var(--danger); margin-bottom: 0;">You do not have permission to access this page. Only staff members can manage cleaning sign-outs.</p>
+        </div>
+        <a href="{% url 'home' %}" style="color: var(--text-muted); text-decoration: none;">← Back to Home</a>
+    {% else %}
+        <!-- Date Display -->
+        <div style="background: var(--bg-muted); padding: 1.5rem; border-radius: 5px; margin-bottom: 2rem; text-align: center;">
+            <p style="color: var(--text-muted); margin: 0.5rem 0;">Date: <strong>{{ today|date:"l, F j, Y" }}</strong></p>
+            <p style="color: var(--text-muted); margin: 0.5rem 0;">Time: <strong>{{ now|date:"h:i:s A" }}</strong></p>
+        </div>
+
+        <!-- Messages -->
+        {% if messages %}
+            <div style="margin-bottom: 2rem;">
+                {% for message in messages %}
+                    <div style="background: {% if message.tags == 'success' %}rgba(47,133,90,0.1){% elif message.tags == 'error' %}rgba(192,57,43,0.1){% else %}rgba(212,165,86,0.1){% endif %}; 
+                                border-left: 4px solid {% if message.tags == 'success' %}var(--success){% elif message.tags == 'error' %}var(--danger){% else %}var(--warning){% endif %}; 
+                                padding: 1rem; border-radius: 5px; margin-bottom: 1rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Active Cleanings (Students Currently Signed In) -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2 style="text-align: left; color: var(--warning); margin-bottom: 1.5rem;">
+                <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/></svg>
+                Active Cleanings ({{ active_cleanings|length }})
+            </h2>
+            
+            {% if active_cleanings %}
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: rgba(212,165,86,0.08); border-bottom: 2px solid var(--warning);">
+                                <th style="padding: 1rem; text-align: left;">Student Name</th>
+                                <th style="padding: 1rem; text-align: center;">Sign In Time</th>
+                                <th style="padding: 1rem; text-align: center;">Elapsed Time</th>
+                                <th style="padding: 1rem; text-align: center;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in active_cleanings %}
+                                <tr style="border-bottom: 1px solid rgba(212,165,86,0.3);">
+                                    <td style="padding: 1rem; font-weight: bold;">
+                                        {{ activity.student.get_full_name|default:activity.student.username }}
+                                        <br><span style="font-size: 0.85rem; color: #666;">({{ activity.student.username }})</span>
+                                    </td>
+                                    <td style="padding: 1rem; text-align: center;">
+                                        {{ activity.sign_in_time|date:"h:i:s A" }}
+                                    </td>
+                                    <td style="padding: 1rem; text-align: center; font-weight: bold;">
+                                        {% with elapsed_minutes=activity.sign_in_time|timeuntil:now %}
+                                            <span style="color: var(--warning);">{{ elapsed_minutes|truncatewords:2 }}</span>
+                                        {% endwith %}
+                                    </td>
+                                    <td style="padding: 1rem; text-align: center;">
+                                        <form method="POST" action="{% url 'admin_force_signout' activity.id %}" style="display: inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to force {{ activity.student.username }} to sign out?');" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                                <svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                                    <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
+                                                </svg>
+                                                Force Sign Out
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                    <div style="background: var(--bg-muted); padding: 1.5rem; border-radius: 5px; text-align: center; color: var(--text-muted);">
+                    <p style="margin:0;">
+                        <svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        No active cleaning sessions right now.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Completed Cleanings (Students Already Signed Out) -->
+        <div class="card">
+            <h2 style="text-align: left; color: var(--success); margin-bottom: 1.5rem;">
+                <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Completed Cleanings ({{ completed_cleanings|length }})
+            </h2>
+            
+            {% if completed_cleanings %}
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: rgba(47,133,90,0.06); border-bottom: 2px solid rgba(47,133,90,0.16);">
+                                <th style="padding: 1rem; text-align: left;">Student Name</th>
+                                <th style="padding: 1rem; text-align: center;">Sign In</th>
+                                <th style="padding: 1rem; text-align: center;">Sign Out</th>
+                                <th style="padding: 1rem; text-align: center;">Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for activity in completed_cleanings %}
+                                    <tr style="border-bottom: 1px solid rgba(47,133,90,0.12);">
+                                    <td style="padding: 1rem; font-weight: bold;">
+                                        {{ activity.student.get_full_name|default:activity.student.username }}
+                                        <br><span style="font-size: 0.85rem; color: #666;">({{ activity.student.username }})</span>
+                                    </td>
+                                    <td style="padding: 1rem; text-align: center; font-size: 0.9rem;">
+                                        {{ activity.sign_in_time|date:"h:i:s A" }}
+                                    </td>
+                                    <td style="padding: 1rem; text-align: center; font-size: 0.9rem;">
+                                        {% if activity.sign_out_time %}
+                                            {{ activity.sign_out_time|date:"h:i:s A" }}
+                                        {% else %}
+                                            <span style="color: #f44336;">Missing</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 1rem; text-align: center; font-weight: bold;">
+                                        {% if activity.duration_hours %}
+                                            <span style="background: rgba(47,133,90,0.12); color: var(--success); padding: 0.3rem 0.7rem; border-radius: 20px;">{{ activity.duration_hours }}h</span>
+                                        {% else %}
+                                            <span style="color: #f44336;">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                    <div style="background: #f5f5f5; padding: 1.5rem; border-radius: 5px; text-align: center;">
+                    <p style="color: var(--text-muted); margin: 0;">No completed cleanings today yet.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Back Link -->
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{% url 'home' %}" style="color: var(--primary-crest); text-decoration: none; font-weight: bold;">← Back to Home</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

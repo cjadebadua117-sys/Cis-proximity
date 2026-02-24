@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign In - CIS-Prox Presence{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Sign In to Location</h3>
+                    <small class="mt-2 d-block">CIS-Prox Presence Tracking</small>
+                </div>
+                <div class="card-body">
+                    {% if not is_on_campus %}
+                    <div class="alert alert-danger" role="alert">
+                        <strong>
+                            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <path d="M10.29 3.86L1.82 18a1 1 0 00.86 1.5h18.64a1 1 0 00.86-1.5L13.71 3.86a1 1 0 00-1.72 0z"></path>
+                                <path d="M12 9v4" stroke-linecap="round" stroke-linejoin="round"></path>
+                                <path d="M12 17h.01" stroke-linecap="round" stroke-linejoin="round"></path>
+                            </svg>
+                            Not on Campus Network
+                        </strong><br>
+                        You are not connected to the university Wi-Fi. Sign-in is only available on campus.
+                        <br><br>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="location.reload()">
+                            Refresh Connection Status
+                        </button>
+                    </div>
+                    <p class="text-muted">Once you reconnect to the campus network, sign-in will be available.</p>
+                    {% else %}
+                    <p class="text-muted">Use the search bar or tap a card below to let classmates know where you are.</p>
+                    
+                    <!-- search bar and visual room cards -->
+                    <div class="mb-4">
+                        <input id="room-search" type="text" class="form-control form-control-lg" placeholder="Where are you now?" autocomplete="off">
+                    </div>
+                    <div class="room-cards mb-3">
+                        {% for room in rooms %}
+                            <div class="room-card {% if active_room_id == room.id %}active{% endif %}" data-room-id="{{ room.id }}">
+                                <svg class="icon" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden="true">
+                                    <!-- simple icon: desktop computer for labs, building for faculty -->
+                                    {% if "Lab" in room.name %}
+                                        <path d="M4 4h16v12H4z" stroke="currentColor" stroke-width="2" fill="none"></path>
+                                        <path d="M8 20h8" stroke="currentColor" stroke-width="2"></path>
+                                    {% else %}
+                                        <path d="M3 21v-18h18v18H3zm2-2h14V5H5v14z" fill="none" stroke="currentColor" stroke-width="2"></path>
+                                    {% endif %}
+                                </svg>
+                                <div style="margin-top:0.5rem; font-size:0.9rem;">{{ room.name }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <form method="post" id="signin-form" style="display:none;">
+                        {% csrf_token %}
+                        <input type="hidden" name="room" id="room-field">
+                    </form>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const cards = document.querySelectorAll('.room-card');
+                            const search = document.getElementById('room-search');
+                            const form = document.getElementById('signin-form');
+                            const field = document.getElementById('room-field');
+
+                            cards.forEach(card => {
+                                card.addEventListener('click', () => {
+                                    cards.forEach(c=>c.classList.remove('active'));
+                                    card.classList.add('active');
+                                    field.value = card.dataset.roomId;
+                                    form.submit();
+                                });
+                            });
+
+                            search.addEventListener('input', () => {
+                                const q = search.value.toLowerCase();
+                                cards.forEach(card => {
+                                    const name = card.textContent.toLowerCase();
+                                    card.style.display = name.includes(q) ? 'block' : 'none';
+                                });
+                            });
+                        });
+                    </script>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
