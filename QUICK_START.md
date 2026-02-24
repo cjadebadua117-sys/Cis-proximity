@@ -1,15 +1,15 @@
-# CIS-Prox System - Quick Start Guide
+﻿# CIS-Prox System - Quick Start Guide
 
-## Current Status ✓
+## Current Status âœ“
 
 Your CIS-Prox system is fully functional and ready for image integration:
 
-- ✓ Django application configured
-- ✓ Database migrations applied
-- ✓ Views and routes working
-- ✓ Static files configured
-- ✓ Templates updated with logo and background structure
-- ✓ Media directory ready for images
+- âœ“ Django application configured
+- âœ“ Database migrations applied
+- âœ“ Views and routes working
+- âœ“ Static files configured
+- âœ“ Templates updated with logo and background structure
+- âœ“ Media directory ready for images
 
 ---
 
@@ -22,12 +22,12 @@ Place these two files in your `media/` folder:
 1. **logo-seal.png** - College of Information Systems Seal
    - Format: PNG with transparent background
    - Recommended size: 500x500px
-   - Destination: `c:\Users\Admin\Desktop\SWRS\media\logo-seal.png`
+   - Destination: `c:\Users\Admin\Desktop\CIS-proximity\media\logo-seal.png`
 
 2. **building.jpg** - College of Information Systems Building
    - Format: JPG (or PNG)
    - Recommended size: 1920x1080px
-   - Destination: `c:\Users\Admin\Desktop\SWRS\media\building.jpg`
+   - Destination: `c:\Users\Admin\Desktop\CIS-proximity\media\building.jpg`
 
 **Current media folder contents:**
 - `media/profile_pictures/` (for user profile images - already configured)
@@ -86,23 +86,23 @@ Quit the server with CTRL-BREAK.
 After adding images, your folder structure will be:
 
 ```
-c:\Users\Admin\Desktop\SWRS\
-├── media/
-│   ├── logo-seal.png          ← Add this
-│   ├── building.jpg           ← Add this
-│   └── profile_pictures/
-├── presence_app/
-│   ├── static/
-│   │   └── style.css
-│   ├── templates/
-│   │   ├── base.html
-│   │   ├── home.html
-│   │   ├── dashboard.html
-│   │   ├── ... (other templates)
-│   └── migrations/
-├── swrs_config/
-├── manage.py
-└── db.sqlite3
+c:\Users\Admin\Desktop\CIS-proximity\
+â”œâ”€â”€ media/
+â”‚   â”œâ”€â”€ logo-seal.png          â† Add this
+â”‚   â”œâ”€â”€ building.jpg           â† Add this
+â”‚   â””â”€â”€ profile_pictures/
+â”œâ”€â”€ presence_app/
+â”‚   â”œâ”€â”€ static/
+â”‚   â”‚   â””â”€â”€ style.css
+â”‚   â”œâ”€â”€ templates/
+â”‚   â”‚   â”œâ”€â”€ base.html
+â”‚   â”‚   â”œâ”€â”€ home.html
+â”‚   â”‚   â”œâ”€â”€ dashboard.html
+â”‚   â”‚   â”œâ”€â”€ ... (other templates)
+â”‚   â””â”€â”€ migrations/
+â”œâ”€â”€ swrs_config/
+â”œâ”€â”€ manage.py
+â””â”€â”€ db.sqlite3
 ```
 
 ---
@@ -171,25 +171,25 @@ These paths tell Django to serve the images from your `media/` folder.
 ### Images not showing?
 
 **Problem:** Logo or background image is missing/broken
-- ✓ Check file names are exactly: `logo-seal.png` and `building.jpg`
-- ✓ Check files are in the `media/` folder
-- ✓ Check file paths use forward slashes: `/media/logo-seal.png`
-- ✓ Restart the development server
-- ✓ Clear browser cache (Ctrl+Shift+Delete)
+- âœ“ Check file names are exactly: `logo-seal.png` and `building.jpg`
+- âœ“ Check files are in the `media/` folder
+- âœ“ Check file paths use forward slashes: `/media/logo-seal.png`
+- âœ“ Restart the development server
+- âœ“ Clear browser cache (Ctrl+Shift+Delete)
 
 **Problem:** Images load slowly
-- ✓ Reduce file size (compress JPG to 200-500KB)
-- ✓ Use web-optimized images (1920x1080px is good)
-- ✓ Try: https://tinyjpg.com or ImageOptim
+- âœ“ Reduce file size (compress JPG to 200-500KB)
+- âœ“ Use web-optimized images (1920x1080px is good)
+- âœ“ Try: https://tinyjpg.com or ImageOptim
 
 **Problem:** Logo looks stretched or pixelated
-- ✓ Ensure source image is square (500x500px minimum)
-- ✓ Use PNG format for logo (crisp graphics)
+- âœ“ Ensure source image is square (500x500px minimum)
+- âœ“ Use PNG format for logo (crisp graphics)
 
 **Problem:** Text not readable on background
-- ✓ Adjust overlay opacity in CSS (currently 0.75 = 75%)
-- ✓ Change `rgba(245, 245, 247, 0.75)` to `0.85` for darker
-- ✓ Or use `rgba(0, 0, 0, 0.3)` for darker overlay with building showing through
+- âœ“ Adjust overlay opacity in CSS (currently 0.75 = 75%)
+- âœ“ Change `rgba(245, 245, 247, 0.75)` to `0.85` for darker
+- âœ“ Or use `rgba(0, 0, 0, 0.3)` for darker overlay with building showing through
 
 ---
 
@@ -255,13 +255,14 @@ Edit base.html `<style>` section:
 Your CIS-Prox system is **100% ready**. Just add the two images to the `media/` folder and you're done!
 
 The system is configured to:
-- ✓ Serve images from `/media/` directory
-- ✓ Display logo in responsive header
-- ✓ Show building as hero background with faded overlay
-- ✓ Provide professional university aesthetic
-- ✓ Work perfectly on mobile and desktop
+- âœ“ Serve images from `/media/` directory
+- âœ“ Display logo in responsive header
+- âœ“ Show building as hero background with faded overlay
+- âœ“ Provide professional university aesthetic
+- âœ“ Work perfectly on mobile and desktop
 
 **Next step:** Add `logo-seal.png` and `building.jpg` to your `media/` folder, then test!
 
 For detailed image setup instructions, see: `IMAGE_SETUP.md`
+
 

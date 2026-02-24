@@ -1,10 +1,10 @@
-# CIS-Prox System - Pre-Launch Verification Checklist
+﻿# CIS-Prox System - Pre-Launch Verification Checklist
 
-## System Status: READY FOR IMAGE INTEGRATION ✓
+## System Status: READY FOR IMAGE INTEGRATION âœ“
 
 ---
 
-## Django Configuration ✓
+## Django Configuration âœ“
 
 - [x] `settings.py` - MEDIA_URL = '/media/'
 - [x] `settings.py` - MEDIA_ROOT = BASE_DIR / 'media'
@@ -17,7 +17,7 @@
 
 ---
 
-## Template Configuration ✓
+## Template Configuration âœ“
 
 ### base.html
 - [x] Header structure in place
@@ -32,7 +32,7 @@
 - [x] Hero background div present
 - [x] Background image reference: `url('/media/building.jpg')`
 - [x] Overlay CSS: `rgba(245, 245, 247, 0.75)`
-- [x] Responsive design (background-attachment: fixed → scroll)
+- [x] Responsive design (background-attachment: fixed â†’ scroll)
 - [x] Hero content centered with proper z-index
 - [x] Main content wrapper with proper nesting
 
@@ -44,7 +44,7 @@
 
 ---
 
-## Static Files Configuration ✓
+## Static Files Configuration âœ“
 
 - [x] `presence_app/static/` directory exists
 - [x] `presence_app/static/style.css` created (comprehensive styling)
@@ -53,7 +53,7 @@
 
 ---
 
-## Database & Models ✓
+## Database & Models âœ“
 
 - [x] SignInRecord model (renamed from CheckInRecord)
 - [x] ActivityHour model with Wednesday/1pm validation
@@ -64,7 +64,7 @@
 
 ---
 
-## Views & Routes ✓
+## Views & Routes âœ“
 
 - [x] sign_in view - Creates SignInRecord
 - [x] sign_out view - Marks offline
@@ -78,7 +78,7 @@
 
 ---
 
-## Image Integration Points ✓
+## Image Integration Points âœ“
 
 ### Logo (Header Image)
 - [x] File location: `media/logo-seal.png`
@@ -99,7 +99,7 @@
 
 ---
 
-## Functionality Status ✓
+## Functionality Status âœ“
 
 ### Sign In/Out System
 - [x] Students can sign in to rooms
@@ -131,7 +131,7 @@
 
 ---
 
-## Image Specifications ✓
+## Image Specifications âœ“
 
 ### Building Image (building.jpg)
 - [ ] **Status: NEEDS TO BE ADDED**
@@ -141,7 +141,7 @@
   - File size: 200-500KB
   - Quality: 75-85% JPEG quality
   - Content: CIS building photo
-  - Destination: `c:\Users\Admin\Desktop\SWRS\media\building.jpg`
+  - Destination: `c:\Users\Admin\Desktop\CIS-proximity\media\building.jpg`
 
 ### Logo Image (logo-seal.png)
 - [ ] **Status: NEEDS TO BE ADDED**
@@ -150,7 +150,7 @@
   - Size: 500x500px (square)
   - File size: < 200KB
   - Content: College of Information Systems official seal
-  - Destination: `c:\Users\Admin\Desktop\SWRS\media\logo-seal.png`
+  - Destination: `c:\Users\Admin\Desktop\CIS-proximity\media\logo-seal.png`
 
 ---
 
@@ -193,51 +193,51 @@
 
 ---
 
-## File Structure Verification ✓
+## File Structure Verification âœ“
 
 ```
-c:\Users\Admin\Desktop\SWRS\
-│
-├── media/
-│   ├── logo-seal.png               ← NEEDS TO BE ADDED
-│   ├── building.jpg                ← NEEDS TO BE ADDED
-│   └── profile_pictures/           ✓ EXISTS
-│
-├── presence_app/
-│   ├── static/
-│   │   ├── style.css               ✓ CREATED
-│   │   └── images/                 ✓ CREATED
-│   ├── templates/
-│   │   ├── base.html               ✓ UPDATED
-│   │   ├── home.html               ✓ UPDATED
-│   │   ├── dashboard.html          ✓ UPDATED
-│   │   └── ... (other templates)   ✓ UPDATED
-│   ├── migrations/
-│   │   ├── 0001_initial.py         ✓ APPLIED
-│   │   ├── 0002_section.py         ✓ APPLIED
-│   │   ├── 0003_userprofile.py     ✓ APPLIED
-│   │   ├── 0004_alter_activity.py  ✓ APPLIED
-│   │   ├── 0005_remove_activity.py ✓ APPLIED
-│   │   └── 0006_instructor.py      ✓ APPLIED
-│   ├── models.py                   ✓ UPDATED (SignInRecord, ActivityHour)
-│   ├── views.py                    ✓ FIXED (no nested functions)
-│   ├── admin.py                    ✓ UPDATED
-│   ├── urls.py                     ✓ INCLUDES routes
-│   └── __init__.py                 ✓ EXISTS
-│
-├── swrs_config/
-│   ├── settings.py                 ✓ CONFIGURED (MEDIA, STATIC)
-│   ├── urls.py                     ✓ CONFIGURED (media serving)
-│   ├── asgi.py                     ✓ EXISTS
-│   ├── wsgi.py                     ✓ EXISTS
-│   └── __init__.py                 ✓ EXISTS
-│
-├── db.sqlite3                       ✓ EXISTS
-├── manage.py                        ✓ EXISTS
-├── create_rooms.py                  ✓ EXISTS
-├── IMAGE_SETUP.md                   ✓ CREATED
-├── QUICK_START.md                   ✓ CREATED
-└── IMAGE_INTEGRATION_COMPLETE.md    ✓ CREATED
+c:\Users\Admin\Desktop\CIS-proximity\
+â”‚
+â”œâ”€â”€ media/
+â”‚   â”œâ”€â”€ logo-seal.png               â† NEEDS TO BE ADDED
+â”‚   â”œâ”€â”€ building.jpg                â† NEEDS TO BE ADDED
+â”‚   â””â”€â”€ profile_pictures/           âœ“ EXISTS
+â”‚
+â”œâ”€â”€ presence_app/
+â”‚   â”œâ”€â”€ static/
+â”‚   â”‚   â”œâ”€â”€ style.css               âœ“ CREATED
+â”‚   â”‚   â””â”€â”€ images/                 âœ“ CREATED
+â”‚   â”œâ”€â”€ templates/
+â”‚   â”‚   â”œâ”€â”€ base.html               âœ“ UPDATED
+â”‚   â”‚   â”œâ”€â”€ home.html               âœ“ UPDATED
+â”‚   â”‚   â”œâ”€â”€ dashboard.html          âœ“ UPDATED
+â”‚   â”‚   â””â”€â”€ ... (other templates)   âœ“ UPDATED
+â”‚   â”œâ”€â”€ migrations/
+â”‚   â”‚   â”œâ”€â”€ 0001_initial.py         âœ“ APPLIED
+â”‚   â”‚   â”œâ”€â”€ 0002_section.py         âœ“ APPLIED
+â”‚   â”‚   â”œâ”€â”€ 0003_userprofile.py     âœ“ APPLIED
+â”‚   â”‚   â”œâ”€â”€ 0004_alter_activity.py  âœ“ APPLIED
+â”‚   â”‚   â”œâ”€â”€ 0005_remove_activity.py âœ“ APPLIED
+â”‚   â”‚   â””â”€â”€ 0006_instructor.py      âœ“ APPLIED
+â”‚   â”œâ”€â”€ models.py                   âœ“ UPDATED (SignInRecord, ActivityHour)
+â”‚   â”œâ”€â”€ views.py                    âœ“ FIXED (no nested functions)
+â”‚   â”œâ”€â”€ admin.py                    âœ“ UPDATED
+â”‚   â”œâ”€â”€ urls.py                     âœ“ INCLUDES routes
+â”‚   â””â”€â”€ __init__.py                 âœ“ EXISTS
+â”‚
+â”œâ”€â”€ swrs_config/
+â”‚   â”œâ”€â”€ settings.py                 âœ“ CONFIGURED (MEDIA, STATIC)
+â”‚   â”œâ”€â”€ urls.py                     âœ“ CONFIGURED (media serving)
+â”‚   â”œâ”€â”€ asgi.py                     âœ“ EXISTS
+â”‚   â”œâ”€â”€ wsgi.py                     âœ“ EXISTS
+â”‚   â””â”€â”€ __init__.py                 âœ“ EXISTS
+â”‚
+â”œâ”€â”€ db.sqlite3                       âœ“ EXISTS
+â”œâ”€â”€ manage.py                        âœ“ EXISTS
+â”œâ”€â”€ create_rooms.py                  âœ“ EXISTS
+â”œâ”€â”€ IMAGE_SETUP.md                   âœ“ CREATED
+â”œâ”€â”€ QUICK_START.md                   âœ“ CREATED
+â””â”€â”€ IMAGE_INTEGRATION_COMPLETE.md    âœ“ CREATED
 ```
 
 ---
@@ -270,16 +270,16 @@ c:\Users\Admin\Desktop\SWRS\
 
 ## Summary: What's Done
 
-✓ Django application fully functional
-✓ Database models and migrations applied
-✓ Views fixed and routes configured
-✓ Templates updated with image references
-✓ CSS styling created
-✓ Media directory ready
-✓ Static files configured
-✓ All previous features (sign-in/out, activity hours, instructor access) working
-✓ All emoji removed
-✓ Room names standardized
+âœ“ Django application fully functional
+âœ“ Database models and migrations applied
+âœ“ Views fixed and routes configured
+âœ“ Templates updated with image references
+âœ“ CSS styling created
+âœ“ Media directory ready
+âœ“ Static files configured
+âœ“ All previous features (sign-in/out, activity hours, instructor access) working
+âœ“ All emoji removed
+âœ“ Room names standardized
 
 ---
 
@@ -332,4 +332,5 @@ c:\Users\Admin\Desktop\SWRS\
 **Status: READY FOR IMAGE UPLOAD**
 
 System is 100% configured. Just add the two images and you're done!
+
 

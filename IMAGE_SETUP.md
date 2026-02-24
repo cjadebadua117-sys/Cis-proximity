@@ -1,4 +1,4 @@
-# Image Setup Instructions for CIS-Prox
+﻿# Image Setup Instructions for CIS-Prox
 
 ## Logo Image (College of Information Systems Seal)
 
@@ -43,20 +43,20 @@
 ## File Structure:
 
 ```
-SWRS/
-├── media/
-│   ├── logo-seal.png          ← Place College seal here
-│   ├── building.jpg           ← Place Building photo here
-│   └── profile_pictures/
-├── presence_app/
-│   ├── static/
-│   │   ├── style.css
-│   │   └── images/
-│   └── templates/
-│       ├── base.html          ← References logo-seal.png
-│       └── home.html          ← References building.jpg
-└── swrs_config/
-    └── settings.py            ← Static files configured
+CIS-proximity/
+â”œâ”€â”€ media/
+â”‚   â”œâ”€â”€ logo-seal.png          â† Place College seal here
+â”‚   â”œâ”€â”€ building.jpg           â† Place Building photo here
+â”‚   â””â”€â”€ profile_pictures/
+â”œâ”€â”€ presence_app/
+â”‚   â”œâ”€â”€ static/
+â”‚   â”‚   â”œâ”€â”€ style.css
+â”‚   â”‚   â””â”€â”€ images/
+â”‚   â””â”€â”€ templates/
+â”‚       â”œâ”€â”€ base.html          â† References logo-seal.png
+â”‚       â””â”€â”€ home.html          â† References building.jpg
+â””â”€â”€ swrs_config/
+    â””â”€â”€ settings.py            â† Static files configured
 ```
 
 ---
@@ -98,7 +98,7 @@ SWRS/
 - Building: Full-width, parallax scroll effect
 - Overlay: 75% opacity (white #f5f5f7)
 
-### Mobile (≤ 768px):
+### Mobile (â‰¤ 768px):
 - Logo: 40px height, maintains aspect ratio
 - Building: Full-width, standard scroll
 - Overlay: Same 75% opacity, cleaner appearance
@@ -157,4 +157,5 @@ SWRS/
 - Overlay opacity is set to 75% (#f5f5f7)
 - Adjust in CSS if needed: `background: rgba(245, 245, 247, 0.70)` for lighter
 - Change to `rgba(0, 0, 0, 0.3)` for darker overlay
+
 

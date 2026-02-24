@@ -1,6 +1,6 @@
-# 🎯 CIS-Prox System - What To Do Next
+﻿# ðŸŽ¯ CIS-Prox System - What To Do Next
 
-## Current Status: SYSTEM READY FOR IMAGES ✅
+## Current Status: SYSTEM READY FOR IMAGES âœ…
 
 Your CIS-Prox Django application is **100% configured** and **fully functional**.
 
@@ -12,7 +12,7 @@ All code, database, routes, templates, and configuration are complete.
 
 ## Your Action Items (3 Steps)
 
-### ✅ Step 1: Obtain the Images
+### âœ… Step 1: Obtain the Images
 
 You need two images from College of Information Systems:
 
@@ -29,31 +29,31 @@ You need two images from College of Information Systems:
    - Size: 500x500px or larger
    - File name: `logo-seal.png`
 
-### ✅ Step 2: Save Images to Project
+### âœ… Step 2: Save Images to Project
 
 Save both files to this folder:
 
 ```
-c:\Users\Admin\Desktop\SWRS\media\
+c:\Users\Admin\Desktop\CIS-proximity\media\
 ```
 
 **Result:**
 ```
 media/
-├── building.jpg
-├── logo-seal.png
-└── profile_pictures/
+â”œâ”€â”€ building.jpg
+â”œâ”€â”€ logo-seal.png
+â””â”€â”€ profile_pictures/
 ```
 
 **Important:** File names must be exactly as shown (lowercase, correct extension)
 
-### ✅ Step 3: Test the System
+### âœ… Step 3: Test the System
 
 Open terminal/command prompt:
 
 ```bash
 # Navigate to project folder
-cd c:\Users\Admin\Desktop\SWRS
+cd c:\Users\Admin\Desktop\CIS-proximity
 
 # Start development server
 python manage.py runserver
@@ -75,19 +75,19 @@ Open browser to: **http://localhost:8000**
 
 ### Home Page
 ```
-┌─────────────────────────────────────────────────┐
-│ [College Seal] CIS-Prox    [Navigation Links]   │
-│                Student Presence System           │
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  [Beautiful Building Photo with Faded Overlay]  │
-│                                                 │
-│              CIS-Prox System                    │
-│      Network-Authenticated Student Presence    │
-│                                                 │
-├─────────────────────────────────────────────────┤
-│ [Features, Stats, etc.]                         │
-└─────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ [College Seal] CIS-Prox    [Navigation Links]   â”‚
+â”‚                Student Presence System           â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚                                                 â”‚
+â”‚  [Beautiful Building Photo with Faded Overlay]  â”‚
+â”‚                                                 â”‚
+â”‚              CIS-Prox System                    â”‚
+â”‚      Network-Authenticated Student Presence    â”‚
+â”‚                                                 â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ [Features, Stats, etc.]                         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### All Other Pages
@@ -106,7 +106,7 @@ Open browser to: **http://localhost:8000**
 - **Source:** College of Information Systems official seal
 - **Format:** PNG with transparent background
 - **Size:** 500x500px (square)
-- **Location:** `c:\Users\Admin\Desktop\SWRS\media\logo-seal.png`
+- **Location:** `c:\Users\Admin\Desktop\CIS-proximity\media\logo-seal.png`
 
 ### Background Image (building.jpg)
 - **Display:** Hero section on home page, full width
@@ -115,7 +115,7 @@ Open browser to: **http://localhost:8000**
 - **Size:** 1920x1080px recommended
 - **Overlay:** 75% white (ensures text is readable)
 - **Effect:** Parallax scrolling on desktop, normal scroll on mobile
-- **Location:** `c:\Users\Admin\Desktop\SWRS\media\building.jpg`
+- **Location:** `c:\Users\Admin\Desktop\CIS-proximity\media\building.jpg`
 
 ---
 
@@ -135,8 +135,8 @@ Wrong:      building-bg.jpg
 
 **Check 2: File Location**
 ```
-CORRECT:    c:\Users\Admin\Desktop\SWRS\media\building.jpg
-WRONG:      c:\Users\Admin\Desktop\SWRS\building.jpg
+CORRECT:    c:\Users\Admin\Desktop\CIS-proximity\media\building.jpg
+WRONG:      c:\Users\Admin\Desktop\CIS-proximity\building.jpg
 WRONG:      c:\Users\Admin\Desktop\building.jpg
 ```
 
@@ -190,21 +190,21 @@ If logo is too dark/bright on dark header:
 
 ## System Features (Already Working)
 
-### For Students ✅
+### For Students âœ…
 - Sign in/out from 7 rooms
 - View attendance dashboard
 - Participate in Activity Hours (Wed 1-5pm)
 - Search and find peers
 - View profiles
 
-### For Instructors ✅
+### For Instructors âœ…
 - View all student presence (FRC dashboard)
 - Mark attendance
 - Adjust signout times
 - Access without enrolling
 - See faculty rooms
 
-### System Features ✅
+### System Features âœ…
 - Campus Wi-Fi authentication
 - Real-time presence tracking
 - Room-based indoor locating
@@ -218,33 +218,33 @@ If logo is too dark/bright on dark header:
 
 ### Image Files (You Add)
 ```
-c:\Users\Admin\Desktop\SWRS\media\
-├── building.jpg              ← Add this
-└── logo-seal.png             ← Add this
+c:\Users\Admin\Desktop\CIS-proximity\media\
+â”œâ”€â”€ building.jpg              â† Add this
+â””â”€â”€ logo-seal.png             â† Add this
 ```
 
 ### Configuration Files (Already Updated)
 ```
-c:\Users\Admin\Desktop\SWRS\
-├── swrs_config/
-│   ├── settings.py           ✓ MEDIA configured
-│   └── urls.py               ✓ Media serving enabled
-├── presence_app/
-│   └── templates/
-│       ├── base.html         ✓ Logo ready
-│       └── home.html         ✓ Background ready
-└── media/                    ✓ Ready for images
+c:\Users\Admin\Desktop\CIS-proximity\
+â”œâ”€â”€ swrs_config/
+â”‚   â”œâ”€â”€ settings.py           âœ“ MEDIA configured
+â”‚   â””â”€â”€ urls.py               âœ“ Media serving enabled
+â”œâ”€â”€ presence_app/
+â”‚   â””â”€â”€ templates/
+â”‚       â”œâ”€â”€ base.html         âœ“ Logo ready
+â”‚       â””â”€â”€ home.html         âœ“ Background ready
+â””â”€â”€ media/                    âœ“ Ready for images
 ```
 
 ### Documentation (Reference)
 ```
-c:\Users\Admin\Desktop\SWRS\
-├── QUICK_START.md                    ← Read this first
-├── IMAGE_SETUP.md
-├── IMAGE_INTEGRATION_COMPLETE.md
-├── VERIFICATION_CHECKLIST.md
-├── SYSTEM_OVERVIEW.md
-└── README_IMAGE_INTEGRATION.md
+c:\Users\Admin\Desktop\CIS-proximity\
+â”œâ”€â”€ QUICK_START.md                    â† Read this first
+â”œâ”€â”€ IMAGE_SETUP.md
+â”œâ”€â”€ IMAGE_INTEGRATION_COMPLETE.md
+â”œâ”€â”€ VERIFICATION_CHECKLIST.md
+â”œâ”€â”€ SYSTEM_OVERVIEW.md
+â””â”€â”€ README_IMAGE_INTEGRATION.md
 ```
 
 ---
@@ -284,49 +284,50 @@ python manage.py migrate
 
 | Step | Action | Status |
 |------|--------|--------|
-| 1 | Get building photo | ⏳ You do this |
-| 2 | Get college seal | ⏳ You do this |
-| 3 | Save to media/ folder | ⏳ You do this |
-| 4 | Run: `python manage.py runserver` | ⏳ You do this |
-| 5 | Visit http://localhost:8000 | ⏳ You do this |
-| 6 | Verify images display | ⏳ You do this |
-| 7 | System complete! | ✨ Done |
+| 1 | Get building photo | â³ You do this |
+| 2 | Get college seal | â³ You do this |
+| 3 | Save to media/ folder | â³ You do this |
+| 4 | Run: `python manage.py runserver` | â³ You do this |
+| 5 | Visit http://localhost:8000 | â³ You do this |
+| 6 | Verify images display | â³ You do this |
+| 7 | System complete! | âœ¨ Done |
 
 ---
 
 ## Need Help?
 
 ### Image Won't Display
-→ See **IMAGE_INTEGRATION_COMPLETE.md** (Troubleshooting section)
+â†’ See **IMAGE_INTEGRATION_COMPLETE.md** (Troubleshooting section)
 
 ### Full System Overview
-→ See **SYSTEM_OVERVIEW.md**
+â†’ See **SYSTEM_OVERVIEW.md**
 
 ### Image Specifications
-→ See **IMAGE_SETUP.md**
+â†’ See **IMAGE_SETUP.md**
 
 ### Quick 3-Step Guide
-→ See **QUICK_START.md**
+â†’ See **QUICK_START.md**
 
 ---
 
-## You're Almost Done! 🎉
+## You're Almost Done! ðŸŽ‰
 
 Your CIS-Prox system is:
-- ✅ Fully implemented
-- ✅ Fully configured
-- ✅ Fully tested
-- ⏳ Ready for images
-- ⏳ Ready to launch
+- âœ… Fully implemented
+- âœ… Fully configured
+- âœ… Fully tested
+- â³ Ready for images
+- â³ Ready to launch
 
 **Just add the two images and you're complete!**
 
 ---
 
-**Current Status: READY TO LAUNCH** 🚀
+**Current Status: READY TO LAUNCH** ðŸš€
 
 All systems operational.
 Just waiting for images.
 
-Go get those photos! 📸
+Go get those photos! ðŸ“¸
+
 

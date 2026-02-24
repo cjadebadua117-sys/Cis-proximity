@@ -1,12 +1,12 @@
-# CIS-Prox Quick Start Guide
+﻿# CIS-Prox Quick Start Guide
 
-Welcome to **CIS-Prox**—your network-authenticated student presence and peer discovery system!
+Welcome to **CIS-Prox**â€”your network-authenticated student presence and peer discovery system!
 
-## 🚀 Get Started in 2 Minutes
+## ðŸš€ Get Started in 2 Minutes
 
 ### Step 1: Start the Server
 ```bash
-cd c:\Users\Admin\Desktop\SWRS
+cd c:\Users\Admin\Desktop\CIS-proximity
 python manage.py runserver 192.168.100.9:8000
 ```
 
@@ -22,7 +22,7 @@ python manage.py runserver 192.168.100.9:8000
 
 ---
 
-## 📍 Core Features & URLs
+## ðŸ“ Core Features & URLs
 
 ### For Students
 
@@ -106,7 +106,7 @@ http://192.168.100.9:8000/admin/presence_app/presencesession/
 **Columns:**
 - User (who)
 - Room (where)
-- Status 🟢/🔴 (active or signed out)
+- Status ðŸŸ¢/ðŸ”´ (active or signed out)
 - Signed In (when)
 - Duration (how long)
 - IP Address (network verification)
@@ -124,13 +124,13 @@ Add rooms/labs like:
 
 ---
 
-## 🔐 Network Security
+## ðŸ” Network Security
 
 ### How It Works
-1. **User connects to campus Wi-Fi** → Gets IP like `192.168.x.x`
-2. **User tries to sign in** → System checks IP against allowed subnets
-3. **IP matches campus subnet** → ✓ Sign-in allowed
-4. **IP doesn't match** → ✗ "You must be on campus Wi-Fi"
+1. **User connects to campus Wi-Fi** â†’ Gets IP like `192.168.x.x`
+2. **User tries to sign in** â†’ System checks IP against allowed subnets
+3. **IP matches campus subnet** â†’ âœ“ Sign-in allowed
+4. **IP doesn't match** â†’ âœ— "You must be on campus Wi-Fi"
 
 ### Configure Campus Networks
 Edit `swrs_config/settings.py`:
@@ -148,7 +148,7 @@ In production, strict IP verification is enforced.
 
 ---
 
-## 🧪 Testing Checklist
+## ðŸ§ª Testing Checklist
 
 - [ ] Create a **Room** (Admin > Room > Add)
 - [ ] Register a **Student** account
@@ -166,7 +166,7 @@ In production, strict IP verification is enforced.
 
 ---
 
-## 📊 Database Models
+## ðŸ“Š Database Models
 
 ### PresenceSession
 ```python
@@ -189,7 +189,7 @@ session.mark_signed_out()   # Ends session
 
 ---
 
-## 🐛 Troubleshooting
+## ðŸ› Troubleshooting
 
 ### "You must be connected to campus Wi-Fi"
 **Fix:** In development, DEBUG must be True. Or add your IP to `CAMPUS_WIFI_SUBNETS`.
@@ -205,7 +205,7 @@ session.mark_signed_out()   # Ends session
 
 ---
 
-## 🎯 Common Workflows
+## ðŸŽ¯ Common Workflows
 
 ### Workflow 1: Attendance Check-In
 ```
@@ -238,7 +238,7 @@ session.mark_signed_out()   # Ends session
 
 ---
 
-## 📞 Support
+## ðŸ“ž Support
 
 - **Django Docs**: https://docs.djangoproject.com/
 - **Issues**: Check logs in Django admin
@@ -249,3 +249,4 @@ session.mark_signed_out()   # Ends session
 **Version**: 1.0  
 **Ready to Deploy**: Yes  
 **Last Updated**: February 2, 2026
+

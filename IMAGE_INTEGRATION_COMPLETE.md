@@ -1,15 +1,15 @@
-# CIS-Prox System - Professional Image Integration Guide
+﻿# CIS-Prox System - Professional Image Integration Guide
 
-## System Configuration Status ✓✓✓
+## System Configuration Status âœ“âœ“âœ“
 
 Your Django application is **fully configured** to serve images from the media directory:
 
-- ✓ `settings.py`: MEDIA_URL and MEDIA_ROOT configured
-- ✓ `urls.py`: Media serving enabled in development mode
-- ✓ `base.html`: Logo container ready to display seal image
-- ✓ `home.html`: Hero background CSS ready for building image
-- ✓ `media/` directory: Created and ready for images
-- ✓ No additional configuration needed
+- âœ“ `settings.py`: MEDIA_URL and MEDIA_ROOT configured
+- âœ“ `urls.py`: Media serving enabled in development mode
+- âœ“ `base.html`: Logo container ready to display seal image
+- âœ“ `home.html`: Hero background CSS ready for building image
+- âœ“ `media/` directory: Created and ready for images
+- âœ“ No additional configuration needed
 
 ---
 
@@ -21,19 +21,19 @@ Your Django application is **fully configured** to serve images from the media d
 
 **Visual Effect:**
 ```
-┌─────────────────────────────────────────┐
-│  HEADER WITH LOGO                       │
-├─────────────────────────────────────────┤
-│                                         │
-│   [Building Photo - Full Width]         │
-│   [with 75% white faded overlay]        │
-│                                         │
-│   CIS-Prox System                       │
-│   Network-Authenticated Student Prox    │
-│                                         │
-└─────────────────────────────────────────┘
-│ Main Content Below                      │
-└─────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  HEADER WITH LOGO                       â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚                                         â”‚
+â”‚   [Building Photo - Full Width]         â”‚
+â”‚   [with 75% white faded overlay]        â”‚
+â”‚                                         â”‚
+â”‚   CIS-Prox System                       â”‚
+â”‚   Network-Authenticated Student Prox    â”‚
+â”‚                                         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â”‚ Main Content Below                      â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 **Technical Details:**
@@ -52,10 +52,10 @@ Your Django application is **fully configured** to serve images from the media d
 
 **Visual Effect:**
 ```
-┌──────────────────────────────────────────┐
-│ [50px Logo] CIS-Prox    [Nav Items...]   │
-│             Student Presence System      │
-└──────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ [50px Logo] CIS-Prox    [Nav Items...]   â”‚
+â”‚             Student Presence System      â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 **Technical Details:**
@@ -121,14 +121,14 @@ For production, use a web server (Nginx/Apache) to serve media files for better 
 
 ### 2. Save to Media Folder
 
-Place images in: `c:\Users\Admin\Desktop\SWRS\media\`
+Place images in: `c:\Users\Admin\Desktop\CIS-proximity\media\`
 
 ```
-SWRS/
-├── media/
-│   ├── logo-seal.png          ← Save here
-│   ├── building.jpg           ← Save here
-│   └── profile_pictures/      (already exists)
+CIS-proximity/
+â”œâ”€â”€ media/
+â”‚   â”œâ”€â”€ logo-seal.png          â† Save here
+â”‚   â”œâ”€â”€ building.jpg           â† Save here
+â”‚   â””â”€â”€ profile_pictures/      (already exists)
 ```
 
 ### 3. Verify File Names
@@ -141,7 +141,7 @@ SWRS/
 
 ```bash
 # Navigate to project folder
-cd c:\Users\Admin\Desktop\SWRS
+cd c:\Users\Admin\Desktop\CIS-proximity
 
 # Run server
 python manage.py runserver
@@ -240,18 +240,18 @@ Dashboard:     http://localhost:8000/dashboard
 **Symptom:** Broken image icons or blank spaces
 
 **Solution Checklist:**
-1. ✓ File names are **exactly** `logo-seal.png` and `building.jpg`
-2. ✓ Files are in `c:\Users\Admin\Desktop\SWRS\media\` folder
-3. ✓ File permissions: Read access for Django process
-4. ✓ Development server is running (`python manage.py runserver`)
-5. ✓ Browser cache cleared (Ctrl+Shift+Delete in Chrome)
-6. ✓ Check browser console (F12) for error messages
-7. ✓ Check Django console for error messages
+1. âœ“ File names are **exactly** `logo-seal.png` and `building.jpg`
+2. âœ“ Files are in `c:\Users\Admin\Desktop\CIS-proximity\media\` folder
+3. âœ“ File permissions: Read access for Django process
+4. âœ“ Development server is running (`python manage.py runserver`)
+5. âœ“ Browser cache cleared (Ctrl+Shift+Delete in Chrome)
+6. âœ“ Check browser console (F12) for error messages
+7. âœ“ Check Django console for error messages
 
 **Advanced Debug:**
 ```bash
 # Check if files exist
-dir c:\Users\Admin\Desktop\SWRS\media
+dir c:\Users\Admin\Desktop\CIS-proximity\media
 
 # Verify settings are correct
 python manage.py shell
@@ -310,27 +310,27 @@ Then refresh the page in browser.
 
 ### Desktop (> 768px)
 ```
-✓ Logo: 50px height
-✓ Background: Fixed position (parallax scrolling)
-✓ Overlay: 75% opacity
-✓ Text: Centered, readable
+âœ“ Logo: 50px height
+âœ“ Background: Fixed position (parallax scrolling)
+âœ“ Overlay: 75% opacity
+âœ“ Text: Centered, readable
 ```
 
 ### Tablet (768px)
 ```
-✓ Logo: Scales down slightly
-✓ Background: Transitions to normal scroll
-✓ Overlay: Same 75% opacity
-✓ Text: Remains centered and readable
+âœ“ Logo: Scales down slightly
+âœ“ Background: Transitions to normal scroll
+âœ“ Overlay: Same 75% opacity
+âœ“ Text: Remains centered and readable
 ```
 
 ### Mobile (< 480px)
 ```
-✓ Logo: 40px height, responsive
-✓ Background: Normal scroll (no parallax)
-✓ Overlay: 75% opacity
-✓ Text: Centered, large enough to read
-✓ Navigation: Mobile-friendly layout
+âœ“ Logo: 40px height, responsive
+âœ“ Background: Normal scroll (no parallax)
+âœ“ Overlay: 75% opacity
+âœ“ Text: Centered, large enough to read
+âœ“ Navigation: Mobile-friendly layout
 ```
 
 **Test Responsive Design:**
@@ -349,7 +349,7 @@ Then refresh the page in browser.
 2. Drag & drop building.jpg
 3. Download compressed version
 4. Save as `building.jpg` in media folder
-5. Typical reduction: 2-3MB → 300-500KB
+5. Typical reduction: 2-3MB â†’ 300-500KB
 
 **Using ImageOptim (Mac):**
 1. Download from imageoptim.com
@@ -413,20 +413,20 @@ Alias /media/ /path/to/project/media/
 ```
 Request Flow:
 1. Browser: GET /media/building.jpg
-2. Django URL: /media/ → settings.MEDIA_ROOT
+2. Django URL: /media/ â†’ settings.MEDIA_ROOT
 3. Django Middleware: Serve file from /media/building.jpg
 4. Browser: Display image
 
 File Locations:
-- Logo PNG:        c:\Users\Admin\Desktop\SWRS\media\logo-seal.png
-- Building JPG:    c:\Users\Admin\Desktop\SWRS\media\building.jpg
-- Profile Pics:    c:\Users\Admin\Desktop\SWRS\media\profile_pictures\
-- Media Config:    c:\Users\Admin\Desktop\SWRS\swrs_config\settings.py
-- URL Config:      c:\Users\Admin\Desktop\SWRS\swrs_config\urls.py
+- Logo PNG:        c:\Users\Admin\Desktop\CIS-proximity\media\logo-seal.png
+- Building JPG:    c:\Users\Admin\Desktop\CIS-proximity\media\building.jpg
+- Profile Pics:    c:\Users\Admin\Desktop\CIS-proximity\media\profile_pictures\
+- Media Config:    c:\Users\Admin\Desktop\CIS-proximity\swrs_config\settings.py
+- URL Config:      c:\Users\Admin\Desktop\CIS-proximity\swrs_config\urls.py
 
 CSS/HTML References:
-- Logo Display:    c:\Users\Admin\Desktop\SWRS\presence_app\templates\base.html
-- Background:      c:\Users\Admin\Desktop\SWRS\presence_app\templates\home.html
+- Logo Display:    c:\Users\Admin\Desktop\CIS-proximity\presence_app\templates\base.html
+- Background:      c:\Users\Admin\Desktop\CIS-proximity\presence_app\templates\home.html
 - Styling:         presence_app\templates\home.html (inline <style>)
 ```
 
@@ -455,4 +455,5 @@ CSS/HTML References:
    - Works on all devices
 
 **No code changes needed. Just add images and start the server!**
+
 

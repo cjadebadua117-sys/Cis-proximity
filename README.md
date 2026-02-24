@@ -1,4 +1,4 @@
-# CIS-Prox: Network-Authenticated Student Presence & Indoor Locating System
+﻿# CIS-Prox: Network-Authenticated Student Presence & Indoor Locating System
 
 A Django-based intranet platform that uses university Wi-Fi authentication to verify student attendance and enable real-time peer discovery within the Information Systems department.
 
@@ -15,21 +15,21 @@ A Django-based intranet platform that uses university Wi-Fi authentication to ve
 ## Project Structure
 
 ```
-SWRS/
-├── presence_app/
-│   ├── models.py           # Database models (PresenceSession, ActivityHour, etc.)
-│   ├── views.py            # CIS-Prox views (signin, signout, search, dashboard)
-│   ├── utils.py            # IP validation, network gatekeeping
-│   ├── admin.py            # Django admin interface
-│   ├── urls.py             # App URL patterns (if applicable)
-│   ├── migrations/         # Database migrations
-│   └── templates/          # HTML templates
-├── swrs_config/
-│   ├── settings.py         # Django settings, CAMPUS_WIFI_SUBNETS config
-│   ├── urls.py             # Project URL routing
-│   └── wsgi.py             # WSGI application
-├── manage.py               # Django management script
-└── db.sqlite3              # SQLite database (dev only)
+CIS-proximity/
+â”œâ”€â”€ presence_app/
+â”‚   â”œâ”€â”€ models.py           # Database models (PresenceSession, ActivityHour, etc.)
+â”‚   â”œâ”€â”€ views.py            # CIS-Prox views (signin, signout, search, dashboard)
+â”‚   â”œâ”€â”€ utils.py            # IP validation, network gatekeeping
+â”‚   â”œâ”€â”€ admin.py            # Django admin interface
+â”‚   â”œâ”€â”€ urls.py             # App URL patterns (if applicable)
+â”‚   â”œâ”€â”€ migrations/         # Database migrations
+â”‚   â””â”€â”€ templates/          # HTML templates
+â”œâ”€â”€ swrs_config/
+â”‚   â”œâ”€â”€ settings.py         # Django settings, CAMPUS_WIFI_SUBNETS config
+â”‚   â”œâ”€â”€ urls.py             # Project URL routing
+â”‚   â””â”€â”€ wsgi.py             # WSGI application
+â”œâ”€â”€ manage.py               # Django management script
+â””â”€â”€ db.sqlite3              # SQLite database (dev only)
 ```
 
 ## Requirements
@@ -43,7 +43,7 @@ SWRS/
 ### 1. Clone and Install Dependencies
 
 ```bash
-cd c:\Users\Admin\Desktop\SWRS
+cd c:\Users\Admin\Desktop\CIS-proximity
 pip install django pillow
 ```
 
@@ -104,64 +104,64 @@ In development (`DEBUG=True` in settings.py), the system allows sign-ins from an
 Represents a user's active session with room location and network verification.
 
 **Fields:**
-- `user` – FK to User
-- `room` – FK to Room (nullable)
-- `ip_address` – Client IP (GenericIPAddressField)
-- `is_verified` – Boolean (IP on campus subnet)
-- `signed_in_at` – DateTime (auto-created)
-- `signed_out_at` – DateTime (nullable)
-- `is_active` – Boolean (session status)
+- `user` â€“ FK to User
+- `room` â€“ FK to Room (nullable)
+- `ip_address` â€“ Client IP (GenericIPAddressField)
+- `is_verified` â€“ Boolean (IP on campus subnet)
+- `signed_in_at` â€“ DateTime (auto-created)
+- `signed_out_at` â€“ DateTime (nullable)
+- `is_active` â€“ Boolean (session status)
 
 **Methods:**
-- `duration_minutes()` – Returns total session duration
-- `mark_signed_out()` – Closes session and sets end time
+- `duration_minutes()` â€“ Returns total session duration
+- `mark_signed_out()` â€“ Closes session and sets end time
 
 ### ActivityHour
 Tracks student activity/cleaning hours with fixed sign-in and sign-out.
 
 **Fields:**
-- `student` – FK to User
-- `sign_in_time` – DateTime
-- `sign_out_time` – DateTime (nullable)
-- `recorded_at` – DateTime (auto-created)
+- `student` â€“ FK to User
+- `sign_in_time` â€“ DateTime
+- `sign_out_time` â€“ DateTime (nullable)
+- `recorded_at` â€“ DateTime (auto-created)
 
 **Methods:**
-- `duration_hours()` – Calculates hours worked
-- `is_active()` – True if not yet signed out
+- `duration_hours()` â€“ Calculates hours worked
+- `is_active()` â€“ True if not yet signed out
 
 ### FlagRaisingCeremony
 Tracks FRC attendance per student and date.
 
 **Fields:**
-- `student` – FK to User
-- `attendance_date` – DateField
-- `present` – Boolean
-- `notes` – TextField (optional)
-- `recorded_at` – DateTime (auto-created)
+- `student` â€“ FK to User
+- `attendance_date` â€“ DateField
+- `present` â€“ Boolean
+- `notes` â€“ TextField (optional)
+- `recorded_at` â€“ DateTime (auto-created)
 
 ## API Endpoints / Views
 
 ### Presence Management
-- `POST /presence/signin/` – Sign in to a room (requires campus IP)
+- `POST /presence/signin/` â€“ Sign in to a room (requires campus IP)
   - Form params: `room` (room ID)
   - Response: Redirect to presence dashboard
   
-- `POST /presence/signout/` – End active session
+- `POST /presence/signout/` â€“ End active session
   - Response: Redirect to presence dashboard
   
-- `GET /presence/dashboard/` – Personal attendance & session history
+- `GET /presence/dashboard/` â€“ Personal attendance & session history
   - Shows: Active session, last 30 days of sessions, FRC/Activity Hour totals
   
-- `GET /presence/search/?q=<query>` – Peer discovery
+- `GET /presence/search/?q=<query>` â€“ Peer discovery
   - Query params: `q` (username or name fragment)
   - Response: List of active peers matching query with room locations
 
 ### Utilities
 
 **IP Validation (`utils.py`):**
-- `get_client_ip(request)` – Extract client IP from request
-- `is_on_university_wifi(request)` – Verify IP is on campus subnet
-- `get_campus_subnets()` – Return configured campus subnets
+- `get_client_ip(request)` â€“ Extract client IP from request
+- `is_on_university_wifi(request)` â€“ Verify IP is on campus subnet
+- `get_campus_subnets()` â€“ Return configured campus subnets
 
 ## Security Considerations
 
@@ -238,13 +238,13 @@ Create tests in `presence_app/tests.py`:
 
 ## Future Enhancements
 
-1. **Real-time Presence Heartbeat** – WebSocket/polling to update status every 5 minutes
-2. **Privacy Controls** – Users can opt-in/out of peer visibility
-3. **Location Analytics** – Track most-visited rooms, peak times
-4. **Mobile App** – Native iOS/Android with push notifications
-5. **QR Code Check-In** – Scan room code instead of dropdown
-6. **Geofencing** – GPS + Wi-Fi hybrid verification for outdoor areas
-7. **Department Dashboard** – Instructor view of all student locations in their section
+1. **Real-time Presence Heartbeat** â€“ WebSocket/polling to update status every 5 minutes
+2. **Privacy Controls** â€“ Users can opt-in/out of peer visibility
+3. **Location Analytics** â€“ Track most-visited rooms, peak times
+4. **Mobile App** â€“ Native iOS/Android with push notifications
+5. **QR Code Check-In** â€“ Scan room code instead of dropdown
+6. **Geofencing** â€“ GPS + Wi-Fi hybrid verification for outdoor areas
+7. **Department Dashboard** â€“ Instructor view of all student locations in their section
 
 ## Support & Documentation
 
@@ -257,3 +257,4 @@ Create tests in `presence_app/tests.py`:
 **Version**: 1.0  
 **Last Updated**: February 2, 2026  
 **Status**: Production Ready
+

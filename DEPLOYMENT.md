@@ -1,4 +1,4 @@
-# CIS-Prox Deployment Guide
+﻿# CIS-Prox Deployment Guide
 
 Ready to take CIS-Prox from development to production? Follow this guide.
 
@@ -50,7 +50,7 @@ sudo mkdir -p /opt/cis-prox
 cd /opt/cis-prox
 
 # 3. Clone/copy code
-cp -r c:\Users\Admin\Desktop\SWRS/* .
+cp -r c:\Users\Admin\Desktop\CIS-proximity/* .
 
 # 4. Create virtual environment
 python3 -m venv venv
@@ -495,3 +495,4 @@ curl https://yourdomain.com/
 **Version**: 1.0  
 **Last Updated**: February 2, 2026  
 **Status**: Ready for Production
+

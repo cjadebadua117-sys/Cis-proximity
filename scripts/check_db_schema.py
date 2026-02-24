@@ -1,6 +1,6 @@
-import sqlite3
+﻿import sqlite3
 import sys
-path = r'C:\Users\Admin\Desktop\SWRS\db.sqlite3'
+path = r'C:\Users\Admin\Desktop\CIS-proximity\db.sqlite3'
 con = sqlite3.connect(path)
 cur = con.cursor()
 try:
@@ -16,3 +16,4 @@ except Exception as e:
     print('error:', e)
 finally:
     con.close()
+
