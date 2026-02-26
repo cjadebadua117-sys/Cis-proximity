@@ -1,3 +1,15 @@
+/* Authentication card styling (login/register) */
+.auth-container {
+    background: rgba(16,25,48,0.95);
+    border: 1px solid rgba(59,130,246,0.4);
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 420px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    backdrop-filter: blur(5px);
+}
+
 /* Profile Dashboard Split-Screen & Header */
 .profile-container {
     max-width: 1000px;
@@ -18,25 +30,9 @@
     align-items: center;
     gap: 2.5rem;
 }
-..profile-avatar-glow {
-    position: absolute;
-    bottom: -24px;
-    left: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.profile-img-glow {
-    border-radius: 50%;
-    border: 3px solid #3b82f6;
-    box-shadow: 0 0 0 4px rgba(59,130,246,0.25), 0 0 16px #3b82f6, 0 0 32px #3b82f6;
-    width: 48px !important;
-    height: 48px !important;
-    max-width: 48px !important;
-    max-height: 48px !important;
-    object-fit: cover;
-    background: #1e293b;
-}
+/* avatar glow removed per user request */
+.profile-avatar-glow { display: none !important; }
+.profile-img-glow { border: none !important; box-shadow: none !important; }
 
 /* ensure any other img overrides are prevented */
 .profile-avatar-glow img {
@@ -182,30 +178,84 @@
     100% { box-shadow: 0 0 0 0 rgba(47,133,90,0); }
 }
 
-/* Glassmorphic card for login/register */
-.auth-card {
-    max-width: 450px;
-    margin: 2.5rem auto;
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: var(--glass-border);
-    border-radius: 16px;
-    box-shadow: var(--shadow-md);
-    padding: 2.5rem 2rem 2rem 2rem;
+/* Floating label inputs (reusable on login, register, etc.) */
+.floating-field {
+    position: relative;
+    margin-bottom: 1.25rem;
 }
 
-/* Long Capsule Switcher Container */
-.role-switcher-container {
-    background-color: #0f172a; /* Deep Navy to match background */
-    border: 1px solid #334155;
+.floating-field .auth-input {
+    width: 100%;
+    background: #141e30;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px;
+    color: #ffffff;
+    padding: 12px 16px;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.floating-field .auth-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 
+        0 0 0 3px rgba(59, 130, 246, 0.2),
+        0 0 20px rgba(59, 130, 246, 0.4);
+    transition: 0.3s ease;
+    outline: none;
+}
+
+.floating-field .floating-label {
+    position: absolute;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    pointer-events: none;
+    transition: all 0.2s;
+    background: transparent;
+    padding: 0 0.25rem;
+    /* override any generic label rules that might push it out of place */
+    display: inline-block;
+    margin-bottom: 0;
+}
+
+.floating-field .auth-input:focus + .floating-label,
+.floating-field .auth-input:not(:placeholder-shown) + .floating-label,
+/* support password field inside wrapper */
+.floating-field .password-wrapper .auth-input:focus + .floating-label,
+.floating-field .password-wrapper .auth-input:not(:placeholder-shown) + .floating-label {
+    transform: translateY(-1.75rem);
+    font-size: 0.75rem;
+    background: #0f172a; /* match input background to avoid white box */
+    color: #94a3b8;
+}
+
+/* floating animation for form card */
+@keyframes floatCard {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
+}
+
+/* glassmorphic card override removed, now using .auth-container or .form-card */
+
+/* Long Capsule Switcher Container / toggle style */
+.role-switcher-container, .toggle-switch {
+    background: rgba(255,255,255,0.05);
     border-radius: 50px;
     display: flex;
-    padding: 4px;
-    width: 100%; /* Long capsule style */
+    padding: 5px;
+    width: 100%;
     margin: 20px 0 30px 0;
     position: relative;
     overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.role-switcher-container .active, .toggle-switch .active {
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    border-radius: 50px;
+    box-shadow: 0 0 20px rgba(59,130,246,0.4);
 }
 
 /* Base button style */
@@ -226,9 +276,9 @@
     z-index: 1;
 }
 
-/* Professional Cobalt Blue for Active Selection */
+/* redefined active tab appearance */
 .role-option.active {
-    background-color: #2563eb; /* Cobalt Blue matches your 'Learn More' button */
+    background-color: #2563eb;
     color: #ffffff;
 }
 
@@ -746,12 +796,6 @@ main {
     font-size: 1.1rem;
     font-weight: 600;
 }
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-}
 
 .quick-card .value {
     color: var(--text-on-dark);
@@ -1004,23 +1048,24 @@ p {
     white-space: nowrap;
 }
 
-.btn-primary {
-    background: rgba(59, 130, 246, 0.15);
-    color: white;
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    transition: all 280ms cubic-bezier(.25,.46,.45,.94);
+/* primary buttons used throughout site */
+.btn-auth, .btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    color: #ffffff;
+    font-weight: 700;
+    padding: 14px;
+    border-radius: 12px;
+    width: 100%;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
 }
 
-.btn-primary:hover {
-    background: rgba(59, 130, 246, 0.25);
-    color: #ffffff;
-    border: 1px solid rgba(59, 130, 246, 0.5);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    box-shadow: 0 0 20px rgba(59,130,246,0.4), 0 0 40px rgba(59,130,246,0.2), 0 0 60px rgba(59,130,246,0.1), inset 0 1px 2px rgba(255,255,255,0.2);
-    transform: translateY(-2px);
+.btn-auth:hover, .btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
 }
 
 .btn-secondary {
@@ -2465,7 +2510,7 @@ footer a:hover {
 
 .privacy-card .privacy-heading {
     -webkit-text-stroke: 0 !important;
-    text-stroke: 0 !important;
+    /* text-stroke is nonstandard; use -webkit-text-stroke for compatibility */
     font-size: 1.6rem !important;
 }
 

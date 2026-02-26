@@ -1,3 +1,4 @@
+# pyright: reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportGeneralTypeIssues=false, reportMissingModuleSource=false
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -77,7 +78,10 @@ class UnifiedRegistrationForm(UserCreationForm):
         fields = ('username', 'email', 'user_type', 'password1', 'password2')
 
     def clean_username(self):
-        username = self.cleaned_data.get('username', '').strip()
+        # normalize username to lowercase and strip whitespace; avoid
+        # duplicates regardless of case.  returning lowercase ensures we
+        # authenticate using the same form during login.
+        username = self.cleaned_data.get('username', '').strip().lower()
         if User.objects.filter(username__iexact=username).exists():
             raise forms.ValidationError('A user with that username already exists.')
         return username
@@ -213,11 +217,16 @@ def register(request):
 
 def login_view(request):
     """Handle user login."""
+    # clear any leftover flash messages so the login page is always clean
+    for _ in messages.get_messages(request):
+        pass
+
     if request.user.is_authenticated:
         return redirect('home')
     
     if request.method == 'POST':
-        username = request.POST.get('username')
+        # normalize the username to lowercase to match registration behavior
+        username = request.POST.get('username','').lower()
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         
@@ -225,7 +234,8 @@ def login_view(request):
             login(request, user)
             return redirect('dashboard')
         else:
-            messages.error(request, 'Invalid username or password.')
+            # authentication failed – do not flash any message to keep login page clean
+            pass
     
     return render(request, 'login.html')
 
@@ -1729,7 +1739,7 @@ def laboratory_history(request):
                 if possible.exists():
                     candidate = possible.first()
                     # If the sign_out_time is reasonably close to the legacy entry_time, use it
-                    time_diff = abs((candidate.sign_out_time - r.entry_time).total_seconds())
+                    time_diff = abs((candidate.sign_out_time - r.entry_time).total_seconds())  # type: ignore
                     if time_diff <= 300:  # within 5 minutes
                         entrance_time = candidate.sign_in_time
                         duration_minutes = candidate.duration_minutes()

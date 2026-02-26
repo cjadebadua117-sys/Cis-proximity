@@ -130,11 +130,6 @@
 {% block content %}
 <div class="auth-page-wrapper">
     <div id="register-toast-stack" class="register-toast-stack" aria-live="polite" aria-atomic="true"></div>
-    {% if messages %}
-        {% for msg in messages %}
-            <div class="flash-seed" data-flash-message="{{ msg|escapejs }}" data-flash-tag="{{ msg.tags }}" hidden></div>
-        {% endfor %}
-    {% endif %}
 
     <div class="auth-container">
         <h2 class="text-3xl font-bold text-white mb-2">Create Account</h2>

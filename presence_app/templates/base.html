@@ -10,21 +10,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
 
     <!-- Core Stylesheet - Professional & Modern Design -->
-    <link rel="stylesheet" href="{% static 'style.css' %}">
+    <!-- versioned stylesheet to force reload when we make changes -->
+    <link rel="stylesheet" href="{% static 'style.css' %}?v=3">
     <!-- Privacy and other support styles -->
     <link rel="stylesheet" href="{% static 'css/privacy.css' %}?v=2">
     {% block extra_css %}
     <style>
-/* Professional UI Reset - No Glows */
-.auth-container {
-    background-color: #1e293b; /* Solid Navy */
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 40px;
-    max-width: 450px;
-    width: 100%;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-}
+/* Professional UI Reset - No Glows - container styling moved to style.css */
+/* .auth-container styles have been moved into static/style.css under .auth-container and .form-card */
 
 /* page wrapper to center auth forms */
 .auth-page-wrapper {
@@ -61,30 +54,14 @@
     outline: none;
 }
 
-/* Professional CTA Button */
-.btn-auth {
-    background-color: #2563eb;
-    color: #ffffff;
-    font-weight: 700;
-    padding: 14px;
-    border-radius: 6px;
-    width: 100%;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: background 0.2s;
-    border: none;
-    cursor: pointer;
-}
-
-.btn-auth:hover {
-    background-color: #1d4ed8;
-}
+/* Button styles have been moved into static/style.css (.btn-auth/.btn-primary) */
 
 /* password wrapper for toggle */
 .password-wrapper {
     position: relative;
     display: flex;
     align-items: center;
+    width: 100%;              /* ensure wrapper fills its container */
 }
 
 .toggle-password {

@@ -112,20 +112,27 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
+# Password validation
+# We relax the default Django rules to make the registration form
+# less sensitive to usernames and allow shorter/less-complex passwords.
+# The similarity and numeric validators have been removed; a smaller
+# minimum length is enforced instead.
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-        # don't compare against email address
-        'OPTIONS': {
-            'user_attributes': ('username', 'first_name', 'last_name'),
-        }
-    },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    #     # don't compare against email address
+    #     'OPTIONS': {
+    #         'user_attributes': ('username', 'first_name', 'last_name'),
+    #     }
+    # },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 6},
     },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    # numeric-only validator removed to allow passwords like "12345abc" etc.
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    # },
 ]
 
 
