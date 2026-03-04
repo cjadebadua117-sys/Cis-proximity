@@ -75,6 +75,7 @@ class InstructorProfile(models.Model):
     """Profile for instructors with their assigned section (advise class)."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='instructor_profile')
     section = models.ForeignKey(Section, on_delete=models.SET_NULL, null=True, blank=True)
+    instructor_room = models.ForeignKey(Room, on_delete=models.SET_NULL, null=True, blank=True, help_text="The room assigned to the instructor.")
     # allow off-network sign-ins when instructors are running remote lectures
     allow_off_network = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -258,8 +259,10 @@ class PresenceSession(models.Model):
         self.is_active = False
         self.save()
         
-        # Automatically create Lab History record on exit
-        if self.room:  # Only if a room is associated
+        # Automatically create Lab History record on exit (laboratories only).
+        room_name = (self.room.name.lower() if self.room and self.room.name else '')
+        is_lab_room = ('lab' in room_name) or ('orc' in room_name)
+        if self.room and is_lab_room:
             LaboratoryHistory.objects.create(
                 student=self.user,
                 room=self.room,

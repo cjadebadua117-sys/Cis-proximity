@@ -1,131 +1,604 @@
 {% extends 'base.html' %}
-
-{% block title %}Profile | CIS-Prox{% endblock %}
+{% load static %}
 
 {% block content %}
+<style>
+    :root {
+        --student-glow: #0ea5e9;
+        --instructor-glow: #a855f7;
+        --panel-bg: rgba(15, 23, 42, 0.8);
+    }
 
-<div class="container profile-container">
+    .profile-center-container {
+        min-height: 90vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
 
-<div class="profile-banner">
-    <div class="profile-banner-inner">
-        <div class="profile-img placeholder">
-            <!-- empty placeholder, icon removed -->
-        </div>
-        <div class="profile-header-info">
-            <h1 class="profile-header-name">
-                {{ profile_user.get_full_name|default:profile_user.username }}
-                {% if presence and presence.is_online %}
-                    <span class="status-pill online-pill"><span class="online-dot"></span> Online</span>
-                {% elif presence %}
-                    <span class="status-pill offline-pill">Offline</span>
-                {% endif %}
-            </h1>
-            <div class="profile-header-username">@{{ profile_user.username }}</div>
-        </div>
-    </div>
-</div>
+    .id-card-premium {
+        background: var(--panel-bg);
+        backdrop-filter: blur(20px);
+        width: 100%;
+        max-width: 940px;
+        border-radius: 28px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+        position: relative;
+    }
 
-<div class="profile-main-grid">
-    <!-- Left Sidebar: Identity (sticky) -->
-    <div class="profile-sidebar">
-        <div class="profile-card info-card">
-            <h3><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="currentColor"><path d="M9 2h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 2v2h6V4H9z"/></svg> Basic Information</h3>
-            <p><strong>Email:</strong> {{ profile_user.email|default:"Not provided" }}</p>
-            <p><strong>Full Name:</strong> {{ profile_user.get_full_name|default:"Not provided" }}</p>
-            {% if profile.phone_number %}<p><strong>Phone:</strong> {{ profile.phone_number }}</p>{% endif %}
+    .role-indicator {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 6px;
+        background: {% if is_instructor %}var(--instructor-glow){% else %}var(--student-glow){% endif %};
+        box-shadow: 4px 0 20px {% if is_instructor %}rgba(168, 85, 247, 0.4){% else %}rgba(14, 165, 233, 0.4){% endif %};
+    }
+
+    .id-sidebar {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .avatar-ring {
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        padding: 4px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+        margin-bottom: 20px;
+        cursor: {% if is_own_profile %}pointer{% else %}default{% endif %};
+        position: relative;
+    }
+
+    .avatar-ring img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid #0f172a;
+    }
+
+    .avatar-hint {
+        position: absolute;
+        bottom: -8px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 11px;
+        color: #cbd5e1;
+        background: rgba(2, 6, 23, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        padding: 4px 10px;
+        white-space: nowrap;
+    }
+
+    .user-badge {
+        font-size: 10px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        padding: 6px 16px;
+        border-radius: 100px;
+        background: {% if is_instructor %}rgba(168, 85, 247, 0.1){% else %}rgba(14, 165, 233, 0.1){% endif %};
+        color: {% if is_instructor %}var(--instructor-glow){% else %}var(--student-glow){% endif %};
+        border: 1px solid rgba(255,255,255,0.1);
+        margin-top: 8px;
+    }
+
+    .id-main {
+        flex: 2;
+        padding: 50px;
+    }
+
+    .welcome-text {
+        margin-bottom: 34px;
+    }
+
+    .welcome-text h1 {
+        font-size: 34px;
+        font-weight: 800;
+        color: #fff;
+        margin: 0;
+        letter-spacing: -1px;
+    }
+
+    .welcome-text span {
+        color: #94a3b8;
+        font-size: 14px;
+    }
+
+    .info-grid-premium {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px 30px;
+    }
+
+    .data-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .data-cell label {
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .data-cell p {
+        font-size: 16px;
+        color: #e2e8f0;
+        font-weight: 500;
+        margin: 0;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        border-radius: 10px;
+        color: #e2e8f0;
+        background: rgba(2, 6, 23, 0.65);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #22d3ee;
+        box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
+    }
+
+    .field-errors {
+        color: #fca5a5;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+
+    .btn-row {
+        margin-top: 34px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .btn-action-premium {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: none;
+        background: #fff;
+        color: #0f172a;
+        padding: 12px 24px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .btn-action-premium.secondary {
+        background: #1e293b;
+        color: #e2e8f0;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+    .cropper-modal {
+        position: fixed;
+        inset: 0;
+        background: #020617;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2147483647;
+        padding: 20px;
+    }
+
+    .cropper-panel {
+        width: min(92vw, 560px);
+        background: #0b1220;
+        background-image: none;
+        opacity: 1;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        border-radius: 16px;
+        box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+        padding: 16px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .cropper-panel h3 {
+        margin: 0 0 12px;
+        font-size: 16px;
+        color: #e2e8f0;
+    }
+
+    .cropper-stage {
+        width: 100%;
+        height: min(62vh, 420px);
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        isolation: isolate;
+    }
+
+    .cropper-stage img {
+        max-width: 100%;
+        display: block;
+    }
+
+    /* Cropper visibility overrides */
+    .cropper-view-box {
+        outline: 2px solid #22d3ee !important;
+        outline-color: #22d3ee !important;
+    }
+
+    .cropper-dashed {
+        border-color: rgba(255, 255, 255, 0.85) !important;
+    }
+
+    .cropper-center::before,
+    .cropper-center::after {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+    }
+
+    .cropper-line {
+        background-color: rgba(34, 211, 238, 0.95) !important;
+    }
+
+    .cropper-point {
+        background-color: #22d3ee !important;
+        width: 12px !important;
+        height: 12px !important;
+        opacity: 1 !important;
+        border-radius: 2px;
+    }
+
+    .cropper-modal {
+        background-color: rgba(0, 0, 0, 0.68) !important;
+        opacity: 1 !important;
+    }
+
+    /* Keep touch interactions inside cropper on mobile devices */
+    .cropper-stage,
+    .cropper-container,
+    .cropper-wrap-box,
+    .cropper-canvas {
+        touch-action: none;
+    }
+
+    body.cropper-open > *:not(#cropper-modal) {
+        visibility: hidden !important;
+    }
+
+    body.cropper-open #cropper-modal {
+        visibility: visible !important;
+    }
+
+    .cropper-actions {
+        margin-top: 14px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+
+    @media (max-width: 800px) {
+        .id-card-premium {
+            flex-direction: column;
+        }
+
+        .id-sidebar {
+            border-right: none;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .id-main {
+            padding: 32px 20px;
+        }
+
+        .info-grid-premium {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="profile-center-container">
+    <div class="id-card-premium">
+        <div class="role-indicator"></div>
+
+        <div class="id-sidebar">
+            <input type="file" id="profile-picture-input" accept="image/*" class="hidden">
+
+            <div class="avatar-ring" id="avatar-trigger" {% if is_own_profile %}title="Click to change photo"{% endif %}>
+                <img
+                    id="profile-avatar"
+                    src="{% if profile.profile_picture %}{{ profile.profile_picture.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}"
+                    alt="Profile"
+                >
+                {% if is_own_profile %}<span class="avatar-hint">Change Photo</span>{% endif %}
+            </div>
+
+            <span class="user-badge">{% if is_instructor %}INSTRUCTOR{% else %}STUDENT{% endif %}</span>
+            <p style="color: #94a3b8; font-size: 13px; margin-top: 15px;">@{{ profile_user.username }}</p>
         </div>
-        {% if presence or is_instructor %}
-        <div class="profile-card enroll-card">
-            <h3><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="currentColor"><path d="M12 2L1 7l11 5 9-4.09V17h2V7L12 2zM11 12.5V22h2v-9.5l7-3.18V6l-9 4-9-4v3.32z"/></svg> {% if is_instructor %}Instructor Info{% else %}Enrollment{% endif %}</h3>
-            {% if is_instructor %}
-                {% if instructor_profile_obj and instructor_profile_obj.section %}
-                    <p><strong>Section:</strong> {{ instructor_profile_obj.section }}</p>
-                {% else %}
-                    <p style="color: var(--text-muted);">No section assigned</p>
-                {% endif %}
-            {% else %}
-                {% if presence.section %}
-                    <p><strong>Section:</strong> {{ presence.section }}</p>
-                {% else %}
-                    <p style="color: var(--danger);">Not enrolled yet</p>
-                {% endif %}
-            {% endif %}
-            {% if presence and presence.current_room %}
-                <p><strong>Current Location:</strong> {{ presence.current_room.name }}</p>
-            {% endif %}
-        </div>
-        {% endif %}
-        {% if profile.bio %}
-        <div class="profile-card bio-card">
-            <h3><svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="18" height="18" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Bio</h3>
-            <p style="color: var(--text-muted); line-height: 1.6;">{{ profile.bio }}</p>
-        </div>
-        {% endif %}
-    </div>
-    <!-- Main Content: Edit Form -->
-    <div class="profile-main-content">
-        {% if is_own_profile and form %}
-        <div class="card profile-edit-card">
-            <h2 style="margin-bottom: 1.5rem;"><svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg> Edit Profile</h2>
-            <form method="POST" enctype="multipart/form-data">
+
+        <div class="id-main">
+            <div class="welcome-text">
+                <h1>{{ profile_user.first_name|default:profile_user.username|capfirst }}'s Profile</h1>
+                <span>Manage your professional identity and account settings.</span>
+            </div>
+
+            <div id="profile-display" class="info-grid-premium">
+                <div class="data-cell">
+                    <label>Full Name</label>
+                    <p>{{ profile_user.get_full_name|default:"Not Provided" }}</p>
+                </div>
+                <div class="data-cell">
+                    <label>Email Address</label>
+                    <p>{{ profile_user.email|default:"Not Provided" }}</p>
+                </div>
+                <div class="data-cell">
+                    <label>{% if is_instructor %}Instructor ID{% else %}Student ID{% endif %}</label>
+                    <p>{{ profile.student_id_number|default:"Pending" }}</p>
+                </div>
+                <div class="data-cell">
+                    <label>Phone Number</label>
+                    <p>{{ profile.phone_number|default:"Not Provided" }}</p>
+                </div>
+                <div class="data-cell" style="grid-column: 1 / -1;">
+                    <label>Bio</label>
+                    <p>{{ profile.bio|default:"No bio yet." }}</p>
+                </div>
+                <div class="data-cell">
+                    <label>Member Since</label>
+                    <p>{{ profile_user.date_joined|date:"F Y" }}</p>
+                </div>
+            </div>
+
+            {% if is_own_profile %}
+            <form id="profile-edit-form" method="post" action="" class="hidden">
                 {% csrf_token %}
-                <div class="profile-form-row">
-                    <div class="form-group">
-                        <label for="id_first_name">First Name</label>
+                <div class="info-grid-premium">
+                    <div class="data-cell">
+                        <label>First Name</label>
                         {{ form.first_name }}
+                        {% if form.first_name.errors %}<div class="field-errors">{{ form.first_name.errors|striptags }}</div>{% endif %}
                     </div>
-                    <div class="form-group">
-                        <label for="id_last_name">Last Name</label>
+                    <div class="data-cell">
+                        <label>Last Name</label>
                         {{ form.last_name }}
+                        {% if form.last_name.errors %}<div class="field-errors">{{ form.last_name.errors|striptags }}</div>{% endif %}
                     </div>
-                </div>
-                <div class="profile-form-row">
-                    <div class="form-group">
-                        <label for="id_email">Email</label>
+                    <div class="data-cell">
+                        <label>Email Address</label>
                         {{ form.email }}
+                        {% if form.email.errors %}<div class="field-errors">{{ form.email.errors|striptags }}</div>{% endif %}
                     </div>
-                    <div class="form-group">
-                        <label for="id_phone_number">Phone Number</label>
+                    <div class="data-cell">
+                        <label>{% if is_instructor %}Instructor ID{% else %}Student ID{% endif %}</label>
+                        {{ form.student_id_number }}
+                        {% if form.student_id_number.errors %}<div class="field-errors">{{ form.student_id_number.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="data-cell">
+                        <label>Phone Number</label>
                         {{ form.phone_number }}
+                        {% if form.phone_number.errors %}<div class="field-errors">{{ form.phone_number.errors|striptags }}</div>{% endif %}
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="id_bio">Bio (max 500 characters)</label>
-                    {{ form.bio }}
-                </div>
-                <div style="display: flex; justify-content: flex-end;">
-                    <button type="submit" class="btn btn-success profile-save-btn">✓ Save Profile</button>
+                    <div class="data-cell" style="grid-column: 1 / -1;">
+                        <label>Bio</label>
+                        {{ form.bio }}
+                        {% if form.bio.errors %}<div class="field-errors">{{ form.bio.errors|striptags }}</div>{% endif %}
+                    </div>
                 </div>
             </form>
-        </div>
-        {% endif %}
-        <div style="text-align: left; margin-top: 2rem;">
-            <a href="/" style="color: var(--text-muted); text-decoration: none;">← Back to Home</a>
+
+            <div class="btn-row">
+                <button type="button" id="edit-profile-btn" class="btn-action-premium">Edit Profile</button>
+                <button type="button" id="cancel-edit-btn" class="btn-action-premium secondary hidden">Cancel</button>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
+
+{% if is_own_profile %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<div id="cropper-modal" class="cropper-modal" aria-hidden="true">
+    <div class="cropper-panel">
+        <h3>Adjust your photo</h3>
+        <div class="cropper-stage">
+            <img id="cropper-image" alt="Crop Preview">
+        </div>
+        <div class="cropper-actions">
+            <button type="button" id="cropper-cancel-btn" class="btn-action-premium secondary">Cancel</button>
+            <button type="button" id="cropper-save-btn" class="btn-action-premium">Save Photo</button>
+        </div>
+    </div>
 </div>
 
-<style>
-.form-control {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 1rem;
-    font-family: inherit;
-    transition: border-color 0.3s;
-}
+<script>
+(function () {
+    const avatarTrigger = document.getElementById('avatar-trigger');
+    const avatarInput = document.getElementById('profile-picture-input');
+    const avatarImage = document.getElementById('profile-avatar');
+    const editBtn = document.getElementById('edit-profile-btn');
+    const cancelBtn = document.getElementById('cancel-edit-btn');
+    const profileDisplay = document.getElementById('profile-display');
+    const editForm = document.getElementById('profile-edit-form');
+    const csrfToken = document.querySelector('#profile-edit-form input[name="csrfmiddlewaretoken"]').value;
+    const cropperModal = document.getElementById('cropper-modal');
+    const cropperImage = document.getElementById('cropper-image');
+    const cropperSaveBtn = document.getElementById('cropper-save-btn');
+    const cropperCancelBtn = document.getElementById('cropper-cancel-btn');
+    let cropper = null;
 
-.form-control:focus {
-    outline: none;
-    border-color: var(--primary-crest);
-    box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
-}
+    // Ensure modal is outside page layout stacking contexts.
+    if (cropperModal && cropperModal.parentElement !== document.body) {
+        document.body.appendChild(cropperModal);
+    }
 
-textarea.form-control {
-    resize: vertical;
-    min-height: 120px;
-}
-</style>
+    let editMode = {{ form.errors|yesno:'true,false' }};
+
+    function applyEditMode(enabled) {
+        editMode = enabled;
+        if (enabled) {
+            profileDisplay.classList.add('hidden');
+            editForm.classList.remove('hidden');
+            cancelBtn.classList.remove('hidden');
+            editBtn.textContent = 'Save Changes';
+        } else {
+            profileDisplay.classList.remove('hidden');
+            editForm.classList.add('hidden');
+            cancelBtn.classList.add('hidden');
+            editBtn.textContent = 'Edit Profile';
+        }
+    }
+
+    applyEditMode(editMode);
+
+    editBtn.addEventListener('click', function () {
+        if (!editMode) {
+            applyEditMode(true);
+            return;
+        }
+        editForm.submit();
+    });
+
+    cancelBtn.addEventListener('click', function () {
+        window.location.reload();
+    });
+
+    avatarTrigger.addEventListener('click', function () {
+        avatarInput.click();
+    });
+
+    function closeCropper() {
+        cropperModal.style.display = 'none';
+        cropperModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('cropper-open');
+        if (cropper) {
+            cropper.destroy();
+            cropper = null;
+        }
+        avatarInput.value = '';
+    }
+
+    avatarInput.addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file.');
+            avatarInput.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (loadEvent) {
+            cropperImage.src = loadEvent.target.result;
+            document.body.classList.add('cropper-open');
+            cropperModal.style.display = 'flex';
+            cropperModal.setAttribute('aria-hidden', 'false');
+
+            if (cropper) {
+                cropper.destroy();
+            }
+
+            cropper = new Cropper(cropperImage, {
+                aspectRatio: 1,
+                viewMode: 1,
+                dragMode: 'crop',
+                autoCropArea: 0.8,
+                background: false,
+                guides: true,
+                center: true,
+                highlight: true,
+                movable: true,
+                zoomable: true,
+                zoomOnTouch: true,
+                zoomOnWheel: true,
+                wheelZoomRatio: 0.1,
+                cropBoxMovable: true,
+                cropBoxResizable: true,
+                minContainerWidth: 260,
+                minContainerHeight: 260,
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+
+    cropperCancelBtn.addEventListener('click', closeCropper);
+
+    cropperModal.addEventListener('click', function (event) {
+        if (event.target === cropperModal) {
+            closeCropper();
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && cropperModal.style.display === 'flex') {
+            closeCropper();
+        }
+    });
+
+    cropperSaveBtn.addEventListener('click', function () {
+        if (!cropper) {
+            return;
+        }
+        cropper.getCroppedCanvas({ width: 800, height: 800 }).toBlob(function (blob) {
+            if (!blob) {
+                alert('Could not process image.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('profile_picture', blob, 'profile-picture.jpg');
+
+            fetch("{% url 'upload_profile_picture' %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                },
+            })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Upload failed.');
+                    }
+                    return data;
+                });
+            })
+            .then(function (data) {
+                avatarImage.src = data.image_url + '?t=' + Date.now();
+                closeCropper();
+            })
+            .catch(function (error) {
+                alert(error.message || 'Could not upload profile picture.');
+            });
+        }, 'image/jpeg', 0.92);
+    });
+})();
+</script>
+{% endif %}
 {% endblock %}

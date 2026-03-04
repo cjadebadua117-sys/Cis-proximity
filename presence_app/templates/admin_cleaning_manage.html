@@ -11,8 +11,8 @@
         Manage Cleaning Activity
     </h1>
     
-    <!-- Staff Only Notice -->
-    {% if not user.is_staff and not user.is_superuser %}
+    <!-- Access Notice -->
+    {% if not can_manage_cleaning %}
         <div style="background: rgba(192,57,43,0.08); border-left: 4px solid var(--danger); padding: 1.5rem; border-radius: 5px; margin-bottom: 2rem;">
             <h3 style="color: #c62828; margin-top: 0;">
                 <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
@@ -20,7 +20,7 @@
                 </svg>
                 Access Denied
             </h3>
-            <p style="color: var(--danger); margin-bottom: 0;">You do not have permission to access this page. Only staff members can manage cleaning sign-outs.</p>
+            <p style="color: var(--danger); margin-bottom: 0;">You do not have permission to access this page.</p>
         </div>
         <a href="{% url 'home' %}" style="color: var(--text-muted); text-decoration: none;">← Back to Home</a>
     {% else %}

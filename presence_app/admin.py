@@ -66,9 +66,9 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(InstructorProfile)
 class InstructorProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'section', 'allow_off_network', 'created_at')
-    list_filter = ('section', 'allow_off_network')
-    list_editable = ('section', 'allow_off_network')
+    list_display = ('user', 'section', 'instructor_room', 'allow_off_network', 'created_at')
+    list_filter = ('section', 'instructor_room', 'allow_off_network')
+    list_editable = ('section', 'instructor_room', 'allow_off_network')
     search_fields = ('user__username', 'user__email')
 
 

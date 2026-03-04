@@ -300,7 +300,7 @@
     <div class="lab-history-header">
         <h1>
             <span class="lab-history-title">Laboratory History</span>
-            <span class="lab-history-subtitle">Exit Records</span>
+            <span class="lab-history-subtitle">Entry & Exit Records</span>
         </h1>
     </div>
 
@@ -308,11 +308,11 @@
     {% if total_exits > 0 %}
     <div class="lab-stats">
         <div class="stat-item">
-            <div class="stat-label">Total Exits</div>
+            <div class="stat-label">Total Records</div>
             <div class="stat-value">{{ total_exits }}</div>
         </div>
         <div class="stat-item">
-            <div class="stat-label">Latest Exit</div>
+            <div class="stat-label">Latest Record</div>
             <div class="stat-value">
                 {% if grouped_days.0.records.0.exit_time %}
                     {{ grouped_days.0.records.0.exit_time|date:"h:i A" }}
@@ -383,8 +383,8 @@
         {% endfor %}
     {% else %}
         <div class="empty-state">
-            <p>No laboratory exit records yet.</p>
-            <p style="font-size: 0.95rem; margin-top: 1rem;">Lab exits will be recorded here automatically when students exit the lab.</p>
+            <p>No laboratory records yet.</p>
+            <p style="font-size: 0.95rem; margin-top: 1rem;">Lab entries and exits will be recorded here automatically.</p>
         </div>
     {% endif %}
 </div>

@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from .models import Room, StudentPresence, Section, UserProfile, InstructorProfile, SignInRecord, FlagRaisingCeremony, ActivityHour, PresenceSession, LaboratoryHistory, LegacyLaboratoryHistory, Broadcast
 from .utils import is_on_university_wifi, get_client_ip
 from django import forms
-from django.db.models import Q, Sum
+from django.db.models import Q, Sum, Exists, OuterRef
 from django.utils import timezone
 from datetime import datetime, timedelta, date
 from pytz import timezone as tz
@@ -110,9 +110,9 @@ class ProfileForm(forms.ModelForm):
     
     class Meta:
         model = UserProfile
-        # profile_picture removed so image upload is no longer part of form
-        fields = ('bio', 'phone_number')
+        fields = ('student_id_number', 'phone_number', 'bio')
         widgets = {
+            'student_id_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 241-0273-1'}),
             'bio': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
         }
@@ -336,33 +336,50 @@ def dashboard(request):
     
     # Determine if user is instructor
     try:
-        request.user.instructor_profile
+        instructor_profile = request.user.instructor_profile
         is_instructor = True
     except InstructorProfile.DoesNotExist:
+        instructor_profile = None
         is_instructor = False
 
     # Filter rooms based on user type
     if is_instructor:
-        # INSTRUCTORS: Faculty 1 & 2 + Classrooms (ROOM 1-5) + Labs (LAB-1, ORC) - EXCLUDE Student Lounge
-        room_names = ['Faculty 1', 'Faculty 2', 'Room 1', 'Room 2', 'Room 3', 'Room 4 (Classroom 4)', 'Room 5', 'Lab-1 (Computer Lab 1)', 'ORC', 'ORC (Computer Lab 2)']
-        rooms = Room.objects.filter(name__in=room_names).exclude(name__contains='Student').order_by('name')
+        # INSTRUCTORS: All rooms except Student Lounge
+        rooms = Room.objects.exclude(name__icontains='Student Lounge').order_by('name')
     else:
-        # STUDENTS: Classrooms + Labs
-        room_names = ['Room 1', 'Room 2', 'Room 3', 'Room 4 (Classroom 4)', 'Room 5', 'Lab-1 (Computer Lab 1)', 'ORC', 'ORC (Computer Lab 2)']
-        rooms = Room.objects.filter(name__in=room_names).order_by('name')
+        # STUDENTS: Classrooms + Labs (exclude Faculty and Student Lounge)
+        rooms = Room.objects.exclude(name__icontains='Student Lounge').exclude(name__icontains='Faculty').order_by('name')
 
     # Get current time in Philippines timezone
     philippines_tz = tz('Asia/Manila')
     current_time_ph = timezone.now().astimezone(philippines_tz)
     
+    # Resolve active state from both systems (legacy SignInRecord + PresenceSession).
+    active_signin_record = _effective_active_signins_qs().filter(
+        student=request.user
+    ).order_by('-sign_in_time').first()
+    active_presence_session = PresenceSession.objects.filter(
+        user=request.user,
+        is_active=True
+    ).order_by('-signed_in_at').first()
+
     # Check if user has an active sign-in (not signed out yet)
-    has_active_signin = False
+    has_active_signin = bool(active_signin_record or active_presence_session)
     if current_presence:
-        active_signin = SignInRecord.objects.filter(
-            student=request.user,
-            sign_out_time__isnull=True
-        ).exists()
-        has_active_signin = active_signin
+        active_room = None
+        if active_signin_record and active_signin_record.room:
+            active_room = active_signin_record.room
+        elif active_presence_session and active_presence_session.room:
+            active_room = active_presence_session.room
+
+        # Keep current presence in sync for accurate location display.
+        if has_active_signin:
+            current_presence.is_online = True
+            if active_room:
+                current_presence.current_room = active_room
+        else:
+            current_presence.is_online = False
+
         # Treat signed-out state and legacy "Student Lounge" as outside department.
         if (not has_active_signin) or (
             current_presence.current_room and current_presence.current_room.name == 'Student Lounge'
@@ -381,11 +398,41 @@ def dashboard(request):
         'current_presence': current_presence,
         'rooms': rooms,
         'current_time_ph': current_time_ph,
+        'signed_in_at': (
+            active_signin_record.sign_in_time
+            if active_signin_record else
+            (active_presence_session.signed_in_at if active_presence_session else None)
+        ),
+        'has_active_signin': has_active_signin,
         'is_instructor': is_instructor,
+        'instructor_room': instructor_profile.instructor_room if instructor_profile else None,
         'current_broadcasts': current_broadcasts,
     }
     # instanced above
     return render(request, 'dashboard.html', context)
+
+
+def _is_laboratory_room(room):
+    """Best-effort laboratory detector based on room naming conventions."""
+    if not room or not getattr(room, 'name', None):
+        return False
+    room_name = room.name.lower()
+    return ('lab' in room_name) or ('orc' in room_name)
+
+
+def _effective_active_signins_qs():
+    """Return active sign-ins excluding stale records superseded by newer rows."""
+    newer_rows = SignInRecord.objects.filter(
+        student_id=OuterRef('student_id'),
+        sign_in_time__gt=OuterRef('sign_in_time')
+    )
+    return SignInRecord.objects.filter(
+        sign_out_time__isnull=True
+    ).annotate(
+        has_newer_record=Exists(newer_rows)
+    ).filter(
+        has_newer_record=False
+    )
 
 
 @login_required(login_url='login')
@@ -422,12 +469,56 @@ def sign_in(request, room_id=None):
     
     # Get or create student presence record
     presence, created = StudentPresence.objects.get_or_create(student=request.user)
+
+    # Close ALL existing active sign-ins when switching rooms to keep times accurate.
+    active_signins = list(
+        SignInRecord.objects.filter(
+            student=request.user,
+            sign_out_time__isnull=True
+        ).order_by('-sign_in_time')
+    )
+    if active_signins:
+        if len(active_signins) == 1 and active_signins[0].room_id == room.id:
+            messages.info(request, f'You are already signed in to {room.name}.')
+            return redirect('dashboard')
+
+        close_time = timezone.now()
+        for active_signin in active_signins:
+            active_signin.sign_out_time = close_time
+            active_signin.save()
+            # If the previous room was a lab, record a corresponding exit row.
+            try:
+                if _is_laboratory_room(active_signin.room):
+                    LaboratoryHistory.objects.create(
+                        student=request.user,
+                        room=active_signin.room,
+                        duration_minutes=active_signin.duration_minutes()
+                    )
+            except Exception:
+                pass
     presence.current_room = room
     presence.is_online = True
     presence.save()
     
     # Record sign-in
     SignInRecord.objects.create(student=request.user, room=room)
+
+    # Log laboratory ENTRY immediately so instructors can see real-time lab history.
+    try:
+        is_instructor_user = hasattr(request.user, 'instructor_profile')
+    except Exception:
+        is_instructor_user = False
+
+    if (not is_instructor_user) and _is_laboratory_room(room):
+        try:
+            LaboratoryHistory.objects.create(
+                student=request.user,
+                room=room,
+                duration_minutes=0
+            )
+        except Exception:
+            # Never block sign-in if history logging fails.
+            pass
     
     if created:
         messages.success(request, f'✓ Signed in to {room.name}')
@@ -449,36 +540,37 @@ def sign_out(request):
         
         presence.save()
 
-        # Record sign-out time for the oldest active sign-in (to handle multiple sign-ins)
-        try:
-            latest_sign_in = SignInRecord.objects.filter(
-                student=request.user,
-                sign_out_time__isnull=True
-            ).earliest('sign_in_time')
-            latest_sign_in.sign_out_time = timezone.now()
-            latest_sign_in.save()
+        # Record sign-out time for ALL active sign-ins (defensive cleanup for stale duplicates).
+        active_rows = list(SignInRecord.objects.filter(
+            student=request.user,
+            sign_out_time__isnull=True
+        ).order_by('-sign_in_time'))
+        close_time = timezone.now()
+        for active_row in active_rows:
+            active_row.sign_out_time = close_time
+            active_row.save()
             # Also create a laboratory exit record so history shows student exits.
             try:
-                # Try modern model first
-                LaboratoryHistory.objects.create(
-                    student=request.user,
-                    room=latest_sign_in.room,
-                    duration_minutes=latest_sign_in.duration_minutes()
-                )
+                # Try modern model first (labs only)
+                if _is_laboratory_room(active_row.room):
+                    LaboratoryHistory.objects.create(
+                        student=request.user,
+                        room=active_row.room,
+                        duration_minutes=active_row.duration_minutes()
+                    )
             except Exception:
                 # Fallback for legacy DB schema: insert into legacy table if available
                 try:
-                    LegacyLaboratoryHistory.objects.create(
-                        lab_room_number=(latest_sign_in.room.name if latest_sign_in.room else None),
-                        entry_time=timezone.now(),
-                        purpose_of_visit='exit',
-                        student_id=request.user.id
-                    )
+                    if _is_laboratory_room(active_row.room):
+                        LegacyLaboratoryHistory.objects.create(
+                            lab_room_number=(active_row.room.name if active_row.room else None),
+                            entry_time=timezone.now(),
+                            purpose_of_visit='exit',
+                            student_id=request.user.id
+                        )
                 except Exception:
                     # If that also fails, ignore to avoid breaking sign-out flow
                     pass
-        except SignInRecord.DoesNotExist:
-            pass
 
         messages.success(request, '✓ You have been signed out.')
     except StudentPresence.DoesNotExist:
@@ -499,40 +591,101 @@ def peer_search(request):
     results = None
     online_students = None
     
-    # Privacy-aware filtering: show only users whose profile privacy allows current user to see them
-    # Allowed if: PUBLIC OR (FRIENDS_ONLY and request.user is in their friends) OR the user is the current user
-    visibility_q = Q(student__profile__privacy_level=UserProfile.PRIVACY_PUBLIC) | Q(student=request.user) | (
-        Q(student__profile__privacy_level=UserProfile.PRIVACY_FRIENDS_ONLY, student__profile__friends=request.user)
-    )
-    
     # Get current user's section (if enrolled)
     try:
         current_section = request.user.studentpresence.section
     except (StudentPresence.DoesNotExist, AttributeError):
         current_section = None
 
+    # Base queryset with profile preloaded for layout data (photo, student id, phone).
+    base_qs = StudentPresence.objects.select_related('student', 'current_room', 'student__profile')
+
+    # Privacy-aware filtering:
+    # - ONLY_ME: never visible to others
+    # - PUBLIC: visible
+    # - FRIENDS_ONLY: visible to classmates (same section)
+    visibility_q = Q(student=request.user) | Q(student__profile__privacy_level=UserProfile.PRIVACY_PUBLIC)
+    if current_section:
+        visibility_q |= Q(
+            student__profile__privacy_level=UserProfile.PRIVACY_FRIENDS_ONLY,
+            section=current_section
+        )
+
+    base_qs = base_qs.exclude(
+        student__profile__privacy_level=UserProfile.PRIVACY_ONLY_ME
+    ).filter(visibility_q)
+
+    # Also consider active PresenceSession and SignInRecord rows as "online" for status accuracy.
+    active_sessions = PresenceSession.objects.filter(
+        is_active=True
+    ).select_related('room').order_by('-signed_in_at')
+    active_session_by_user = {}
+    for session in active_sessions:
+        if session.user_id not in active_session_by_user:
+            active_session_by_user[session.user_id] = session
+    active_signins = _effective_active_signins_qs().select_related('room').order_by('-sign_in_time')
+    active_signin_by_user = {}
+    for record in active_signins:
+        if record.student_id not in active_signin_by_user:
+            active_signin_by_user[record.student_id] = record
+
+    # Build always-visible online list from active records only.
+    online_students = base_qs.filter(
+        Q(student__presence_sessions__is_active=True)
+        | Q(student__sign_in_records__sign_out_time__isnull=True)
+    ).exclude(student=request.user).order_by('-last_seen').distinct()
+
     if query:
-        # When searching by name/username, show classmates in the same section
-        # regardless of online status, so users can find their enrolled peers.
-        # This includes students who haven't signed in yet (not online=False by default,
-        # but have enrolled in a section).
+        # Search by username, full name, or student ID.
         if current_section:
-            # Search within the same section first (all enrolled classmates)
-            results = StudentPresence.objects.filter(
-                section=current_section,
-                student__username__icontains=query
-            ).exclude(student=request.user).filter(visibility_q).select_related('student', 'current_room').distinct()
+            results = base_qs.filter(
+                section=current_section
+            ).filter(
+                Q(student__username__icontains=query) |
+                Q(student__first_name__icontains=query) |
+                Q(student__last_name__icontains=query) |
+                Q(student__profile__student_id_number__icontains=query)
+            ).exclude(student=request.user).distinct()
         else:
             # Fallback: search online students only if not enrolled in a section
-            results = StudentPresence.objects.filter(
-                is_online=True,
-                student__username__icontains=query
-            ).filter(visibility_q).select_related('student', 'current_room').distinct()
+            results = base_qs.filter(
+                Q(student__presence_sessions__is_active=True)
+                | Q(student__sign_in_records__sign_out_time__isnull=True),
+            ).filter(
+                Q(student__username__icontains=query) |
+                Q(student__first_name__icontains=query) |
+                Q(student__last_name__icontains=query) |
+                Q(student__profile__student_id_number__icontains=query)
+            ).exclude(student=request.user).distinct()
     else:
-        # Show all online students in the feed (when no search query)
-        online_students = StudentPresence.objects.filter(
-            is_online=True
-        ).filter(visibility_q).select_related('student', 'current_room').order_by('-last_seen').distinct()
+        # No query: keep results empty and show online list above.
+        results = None
+
+    # Reconcile stale StudentPresence rows using active PresenceSession state.
+    def _reconcile_status(presence_obj):
+        active_session = active_session_by_user.get(presence_obj.student_id)
+        active_signin = active_signin_by_user.get(presence_obj.student_id)
+        resolved_online = bool(active_session or active_signin)
+        presence_obj.resolved_online = resolved_online
+
+        active_room = None
+        if active_signin and active_signin.room:
+            active_room = active_signin.room
+        elif active_session and active_session.room:
+            active_room = active_session.room
+
+        # Outside department should not show stale previous room values.
+        if active_room and active_room.name != 'Student Lounge':
+            presence_obj.current_room = active_room
+        else:
+            presence_obj.current_room = None
+
+    if results is not None:
+        for row in results:
+            _reconcile_status(row)
+    if online_students is not None:
+        for row in online_students:
+            _reconcile_status(row)
     
     context = {
         'query': query,
@@ -584,15 +737,15 @@ def profile_view(request, username=None):
         form = ProfileForm(request.POST, instance=profile)
         if form.is_valid():
             # Update user fields
-            request.user.first_name = form.cleaned_data.get('first_name', '')
-            request.user.last_name = form.cleaned_data.get('last_name', '')
-            request.user.email = form.cleaned_data.get('email', '')
-            request.user.save()
+            user.first_name = form.cleaned_data.get('first_name', '')
+            user.last_name = form.cleaned_data.get('last_name', '')
+            user.email = form.cleaned_data.get('email', '')
+            user.save()
             
             # Update profile
             form.save()
             messages.success(request, '✓ Profile updated successfully!')
-            return redirect('profile')
+            return redirect(request.path)
     else:
         initial_data = {
             'first_name': user.first_name,
@@ -612,6 +765,27 @@ def profile_view(request, username=None):
     }
     
     return render(request, 'profile.html', context)
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def upload_profile_picture(request):
+    """Upload and persist the authenticated user's profile picture."""
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    upload = request.FILES.get('profile_picture')
+    if not upload:
+        return JsonResponse({'status': 'error', 'message': 'No file uploaded.'}, status=400)
+
+    if upload.size > (5 * 1024 * 1024):
+        return JsonResponse({'status': 'error', 'message': 'Image must be 5MB or less.'}, status=400)
+
+    content_type = (upload.content_type or '').lower()
+    if not content_type.startswith('image/'):
+        return JsonResponse({'status': 'error', 'message': 'Invalid file type. Upload an image.'}, status=400)
+
+    profile.profile_picture = upload
+    profile.save()
+    return JsonResponse({'status': 'ok', 'image_url': profile.profile_picture.url})
 
 
 @login_required(login_url='login')
@@ -846,7 +1020,7 @@ def attendance_dashboard(request):
     # Determine if the cleaning sign-in button should be enabled
     now = timezone.now().astimezone(tz('Asia/Manila'))
     is_wednesday = now.weekday() == 2  # Monday=0, Tuesday=1, Wednesday=2
-    within_window = (now.hour >= 13 and now.hour < 17)  # 13:00 - 16:59
+    within_window = (now.hour == 13 and now.minute <= 15)  # 13:00 - 13:15
     can_sign_in_activity = is_wednesday and within_window and (active_activity is None)
     
     # Calculate total activity hours for current month
@@ -1019,9 +1193,9 @@ def activity_signin(request):
     now = timezone.now().astimezone(tz('Asia/Manila'))
     today = now.date()
 
-    # Only allow sign-in on Wednesday between 13:00 and 17:00
-    if not (now.weekday() == 2 and now.hour >= 13 and now.hour < 17):
-        messages.error(request, 'Cleaning sign-in is only available on Wednesdays between 1:00 PM and 5:00 PM.')
+    # Only allow sign-in on Wednesday between 13:00 and 13:15.
+    if not (now.weekday() == 2 and now.hour == 13 and now.minute <= 15):
+        messages.error(request, 'Cleaning sign-in is only available on Wednesdays from 1:00 PM to 1:15 PM.')
         return redirect('attendance_dashboard')
     
     # Check if already signed in today
@@ -1047,9 +1221,8 @@ def activity_signin(request):
         messages.info(request, f'✓ You already completed cleaning today at {time_str}.')
         return redirect('attendance_dashboard')
     
-    # Create cleaning activity with 1pm sign-in time
-    now = timezone.now().astimezone(tz('Asia/Manila'))
-    sign_in_time = timezone.now().replace(hour=13, minute=0, second=0, microsecond=0)  # 1pm
+    # Create cleaning activity anchored to 1:00 PM local time.
+    sign_in_time = now.replace(hour=13, minute=0, second=0, microsecond=0)
     
     ActivityHour.objects.create(
         student=request.user,
@@ -1105,30 +1278,57 @@ def activity_signout(request, activity_id=None):
 @login_required(login_url='login')
 def admin_cleaning_manage(request):
     """Admin view to manage student cleaning sign-outs."""
-    if not (request.user.is_staff or request.user.is_superuser):
+    is_admin = request.user.is_staff or request.user.is_superuser
+    try:
+        instructor_profile = request.user.instructor_profile
+        is_instructor_manager = True
+    except InstructorProfile.DoesNotExist:
+        instructor_profile = None
+        is_instructor_manager = False
+
+    if not (is_admin or is_instructor_manager):
         messages.error(request, 'You do not have permission to access this page.')
         return redirect('home')
     
     now = timezone.now().astimezone(tz('Asia/Manila'))
     today = now.date()
     
-    # Get all students signed in for cleaning today
-    active_cleanings = ActivityHour.objects.filter(
-        sign_in_time__date=today,
-        sign_out_time__isnull=True
-    ).select_related('student').order_by('sign_in_time')
-    
-    # Get completed cleanings for today
-    completed_cleanings = ActivityHour.objects.filter(
-        sign_in_time__date=today,
-        sign_out_time__isnull=False
-    ).select_related('student').order_by('-sign_out_time')
+    # Instructors can only manage their own section. Admins can manage all sections.
+    if is_admin:
+        active_cleanings = ActivityHour.objects.filter(
+            sign_in_time__date=today,
+            sign_out_time__isnull=True
+        ).select_related('student').order_by('sign_in_time')
+
+        completed_cleanings = ActivityHour.objects.filter(
+            sign_in_time__date=today,
+            sign_out_time__isnull=False
+        ).select_related('student').order_by('-sign_out_time')
+    else:
+        section = instructor_profile.section if instructor_profile else None
+        if not section:
+            active_cleanings = ActivityHour.objects.none()
+            completed_cleanings = ActivityHour.objects.none()
+            messages.warning(request, 'No section assigned yet. Ask an administrator to assign your section.')
+        else:
+            active_cleanings = ActivityHour.objects.filter(
+                sign_in_time__date=today,
+                sign_out_time__isnull=True,
+                student__studentpresence__section=section
+            ).select_related('student').order_by('sign_in_time')
+
+            completed_cleanings = ActivityHour.objects.filter(
+                sign_in_time__date=today,
+                sign_out_time__isnull=False,
+                student__studentpresence__section=section
+            ).select_related('student').order_by('-sign_out_time')
     
     context = {
         'active_cleanings': active_cleanings,
         'completed_cleanings': completed_cleanings,
         'today': today,
         'now': now,
+        'can_manage_cleaning': True,
     }
     
     return render(request, 'admin_cleaning_manage.html', context)
@@ -1137,12 +1337,28 @@ def admin_cleaning_manage(request):
 @login_required(login_url='login')
 @require_http_methods(["POST"])
 def admin_force_signout(request, activity_id):
-    """Admin forces a student to sign out early."""
-    if not (request.user.is_staff or request.user.is_superuser):
+    """Admin/instructor forces a student to sign out early."""
+    is_admin = request.user.is_staff or request.user.is_superuser
+    try:
+        instructor_profile = request.user.instructor_profile
+        is_instructor_manager = True
+    except InstructorProfile.DoesNotExist:
+        instructor_profile = None
+        is_instructor_manager = False
+
+    if not (is_admin or is_instructor_manager):
         messages.error(request, 'You do not have permission.')
         return redirect('home')
     
     activity = get_object_or_404(ActivityHour, id=activity_id)
+
+    # Instructors may force sign-out only for students in their assigned section.
+    if (not is_admin) and is_instructor_manager:
+        section = instructor_profile.section if instructor_profile else None
+        student_presence = StudentPresence.objects.filter(student=activity.student).first()
+        if not section or not student_presence or student_presence.section != section:
+            messages.error(request, 'You can only force sign-out students in your assigned section.')
+            return redirect('admin_cleaning_manage')
     
     if activity.sign_out_time:
         messages.warning(request, f'{activity.student.username} already signed out.')
@@ -1314,6 +1530,125 @@ def instructor_mark_frc(request, student_id):
 
 
 @login_required(login_url='login')
+def instructor_reports(request):
+    """Section-level instructor reporting with CSV export."""
+    try:
+        instructor_profile = request.user.instructor_profile
+    except InstructorProfile.DoesNotExist:
+        messages.error(request, 'You do not have instructor privileges.')
+        return redirect('home')
+
+    section = instructor_profile.section
+    if not section:
+        messages.warning(request, 'No section assigned yet. Ask an administrator to assign your section.')
+        return redirect('instructor_dashboard')
+
+    today = timezone.now().astimezone(tz('Asia/Manila')).date()
+    default_start = today - timedelta(days=30)
+    start_str = request.GET.get('start_date', default_start.strftime('%Y-%m-%d'))
+    end_str = request.GET.get('end_date', today.strftime('%Y-%m-%d'))
+
+    try:
+        start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
+    except ValueError:
+        start_date = default_start
+        end_date = today
+        messages.warning(request, 'Invalid date format. Using last 30 days.')
+
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    ph_tz = tz('Asia/Manila')
+    start_dt = ph_tz.localize(datetime.combine(start_date, datetime.min.time()))
+    end_dt = ph_tz.localize(datetime.combine(end_date, datetime.max.time()))
+
+    students = (User.objects
+                .filter(studentpresence__section=section)
+                .distinct()
+                .order_by('last_name', 'first_name', 'username'))
+
+    rows = []
+    total_signins = 0
+    total_frc_present = 0
+    total_frc_absent = 0
+    total_cleaning = 0
+    total_cleaning_hours = 0.0
+
+    for student in students:
+        signins = SignInRecord.objects.filter(
+            student=student, sign_in_time__gte=start_dt, sign_in_time__lte=end_dt
+        ).count()
+        frc_present = FlagRaisingCeremony.objects.filter(
+            student=student, attendance_date__gte=start_date, attendance_date__lte=end_date, present=True
+        ).count()
+        frc_absent = FlagRaisingCeremony.objects.filter(
+            student=student, attendance_date__gte=start_date, attendance_date__lte=end_date, present=False
+        ).count()
+
+        cleaning_qs = ActivityHour.objects.filter(
+            student=student, sign_in_time__gte=start_dt, sign_in_time__lte=end_dt
+        )
+        cleaning_sessions = cleaning_qs.count()
+        cleaning_hours = 0.0
+        for act in cleaning_qs:
+            if act.sign_out_time:
+                delta = act.sign_out_time - act.sign_in_time
+                cleaning_hours += max(0.0, delta.total_seconds() / 3600.0)
+
+        total_signins += signins
+        total_frc_present += frc_present
+        total_frc_absent += frc_absent
+        total_cleaning += cleaning_sessions
+        total_cleaning_hours += cleaning_hours
+
+        rows.append({
+            'student_name': student.get_full_name() or student.username,
+            'username': student.username,
+            'signins': signins,
+            'frc_present': frc_present,
+            'frc_absent': frc_absent,
+            'cleaning_sessions': cleaning_sessions,
+            'cleaning_hours': round(cleaning_hours, 1),
+        })
+
+    if request.GET.get('export') == 'csv':
+        import csv
+        from django.http import HttpResponse
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = (
+            f'attachment; filename=\"instructor_report_{section}_{start_date}_{end_date}.csv\"'
+        )
+        writer = csv.writer(response)
+        writer.writerow([
+            'Section', 'Date From', 'Date To', 'Student Name', 'Username',
+            'Room Sign-ins', 'FRC Present', 'FRC Absent', 'Cleaning Sessions', 'Cleaning Hours'
+        ])
+        for row in rows:
+            writer.writerow([
+                str(section), start_date, end_date, row['student_name'], row['username'],
+                row['signins'], row['frc_present'], row['frc_absent'],
+                row['cleaning_sessions'], row['cleaning_hours'],
+            ])
+        return response
+
+    context = {
+        'instructor_profile': instructor_profile,
+        'section': section,
+        'start_date': start_date,
+        'end_date': end_date,
+        'rows': rows,
+        'total_students': len(rows),
+        'total_signins': total_signins,
+        'total_frc_present': total_frc_present,
+        'total_frc_absent': total_frc_absent,
+        'total_cleaning': total_cleaning,
+        'total_cleaning_hours': round(total_cleaning_hours, 1),
+    }
+    return render(request, 'instructor_reports.html', context)
+
+
+@login_required(login_url='login')
 def instructor_manage_signout(request):
     """Instructor view to adjust student sign-out times for cleaning activity."""
     # Check if user is an instructor
@@ -1325,21 +1660,34 @@ def instructor_manage_signout(request):
     
     section = instructor_profile.section
     today = timezone.now().astimezone(tz('Asia/Manila')).date()
-    
-    # Get all students in this section's activity hours for today
-    activities = ActivityHour.objects.filter(
-        student__studentpresence__section=section,
-        sign_in_time__date=today
-    ).select_related('student').order_by('-sign_in_time')
-    # compute a simple progress percentage for each active cleaning (assuming 2h required)
+    recent_cutoff = today - timedelta(days=7)
+
+    if not section:
+        activities = ActivityHour.objects.none()
+        recent_activities = ActivityHour.objects.none()
+        messages.warning(request, 'No section assigned yet. Ask an administrator to assign your section.')
+    else:
+        # Primary panel: today's sessions
+        activities = ActivityHour.objects.filter(
+            student__studentpresence__section=section,
+            sign_in_time__date=today
+        ).select_related('student').order_by('-sign_in_time')
+
+        # Secondary panel: last 7 days (including today) so instructors can still adjust records
+        recent_activities = ActivityHour.objects.filter(
+            student__studentpresence__section=section,
+            sign_in_time__date__gte=recent_cutoff
+        ).select_related('student').order_by('-sign_in_time')[:100]
+
+    # compute a simple progress percentage for each activity (assuming 2h required)
     now = timezone.now()
-    for act in activities:
+    for act in list(activities) + list(recent_activities):
         if act.sign_out_time:
             act.progress = 100
         else:
             elapsed = now - act.sign_in_time
             minutes = elapsed.total_seconds() / 60
-            act.progress = min(100, int((minutes / 120) * 100))
+            act.progress = max(0, min(100, int((minutes / 120) * 100)))
     
     # Check if user is on university network
     network_status = 'online' if is_on_university_wifi(request) else 'offline'
@@ -1348,6 +1696,7 @@ def instructor_manage_signout(request):
         'instructor_profile': instructor_profile,
         'section': section,
         'activities': activities,
+        'recent_activities': recent_activities,
         'today': today,
         'network_status': network_status,
     }
@@ -1445,6 +1794,29 @@ def presence_signin(request):
             is_verified=True,
             is_active=True
         )
+
+        # Sync StudentPresence used by Find Peers.
+        presence, _ = StudentPresence.objects.get_or_create(student=request.user)
+        presence.current_room = room
+        presence.is_online = True
+        presence.save()
+
+        # Log laboratory ENTRY immediately for history visibility.
+        try:
+            is_instructor_user = hasattr(request.user, 'instructor_profile')
+        except Exception:
+            is_instructor_user = False
+
+        if (not is_instructor_user) and _is_laboratory_room(room):
+            try:
+                LaboratoryHistory.objects.create(
+                    student=request.user,
+                    room=room,
+                    duration_minutes=0
+                )
+            except Exception:
+                # Keep sign-in successful even if logging fails.
+                pass
         
         messages.success(request, f'✓ Signed in to {room.name}. Your location is now visible to peers.')
         return redirect('presence_dashboard')
@@ -1498,6 +1870,15 @@ def presence_signout(request):
         duration = active_session.duration_minutes()
         
         active_session.mark_signed_out()
+
+        # Sync StudentPresence used by Find Peers.
+        try:
+            presence = StudentPresence.objects.get(student=request.user)
+            presence.is_online = False
+            presence.current_room = None
+            presence.save()
+        except StudentPresence.DoesNotExist:
+            pass
         
         messages.success(request, f'✓ Signed out from {room_name}. Session duration: {duration} minutes.')
         return redirect('presence_dashboard')
@@ -1623,57 +2004,26 @@ def laboratory_history(request):
         messages.error(request, 'Access denied — laboratory history is for instructors only.')
         return redirect('dashboard')
 
-    # Get instructor's section (may be None if not assigned)
-    instructor_section = None
+    # Keep profile fetch for template/context safety
     try:
         instructor_profile = request.user.instructor_profile
-        instructor_section = instructor_profile.section
     except InstructorProfile.DoesNotExist:
         instructor_profile = None
 
-    # Try to load the modern `LaboratoryHistory` table; if the DB schema
-    # is legacy (different columns), fall back to reading the legacy table
-    # via `LegacyLaboratoryHistory` and normalize the rows for the template.
+    # Build rows from SignInRecord directly so displayed entrance/exit times
+    # are exact (no inferred timestamps).
     lab_rows = []
     total = 0
     
-    # Check if instructor has a section assigned
-    if instructor_section is None:
-        # Instructor has no section - show appropriate message
-        if request.user.is_staff or request.user.is_superuser:
-            # Admin/superuser can see ALL lab history
-            section_filter = None
-        else:
-            # Regular instructor with no section - show message
-            from django.contrib import messages
-            messages.warning(request, 'You do not have a section assigned. Please contact an administrator to assign your section.')
-            section_filter = None
-    else:
-        section_filter = instructor_section
-    
     try:
-        # Build query based on section assignment
-        instr_ids = InstructorProfile.objects.values_list('user_id', flat=True)
-        
-        if section_filter is None:
-            # Show all records (admin/superuser or instructor without section)
-            qs = (LaboratoryHistory.objects.select_related('student', 'room')
-                  .exclude(student__id__in=instr_ids)
-                  .order_by('-exit_time'))
-        else:
-            # Show only records for this instructor's section
-            qs = (LaboratoryHistory.objects.select_related('student', 'room')
-                  .filter(student__studentpresence__section=section_filter)
-                  .exclude(student__id__in=instr_ids)
-                  .order_by('-exit_time'))
+        lab_room_filter = Q(room__name__icontains='lab') | Q(room__name__icontains='orc')
+        qs = (SignInRecord.objects.select_related('student', 'room')
+              .filter(lab_room_filter)
+              .order_by('-sign_in_time'))
         
         total = qs.count()
         
         for r in qs:
-            from datetime import timedelta
-            # Calculate entrance time by subtracting duration from exit time
-            entrance_time = r.exit_time - timedelta(minutes=r.duration_minutes) if r.duration_minutes else r.exit_time
-
             # Resolve student's section for instructor clarity
             section_name = ''
             try:
@@ -1692,6 +2042,15 @@ def laboratory_history(request):
             except Exception:
                 student_id_number = ''
 
+            if r.sign_out_time:
+                duration_minutes = r.duration_minutes()
+            else:
+                # Active lab session: compute running duration.
+                duration_minutes = int((timezone.now() - r.sign_in_time).total_seconds() / 60)
+
+            duration_hours = int(duration_minutes // 60) if duration_minutes else 0
+            duration_minutes_remainder = int(duration_minutes % 60) if duration_minutes else 0
+
             # append record
             lab_rows.append({
                 'student': r.student,
@@ -1700,89 +2059,12 @@ def laboratory_history(request):
                 'section_name': section_name,
                 'student_id_number': student_id_number,
                 'room_name': r.room.name if r.room else 'Unknown',
-                'entrance_time': entrance_time,
-                'exit_time': r.exit_time,
-                'duration_minutes': r.duration_minutes,
-                'duration_hours': r.duration_hours,
-                'duration_minutes_remainder': r.duration_minutes_remainder,
-            })
-    except OperationalError:
-        # Legacy schema: use non-managed model mapping
-        legacy_qs = LegacyLaboratoryHistory.objects.all().order_by('-entry_time')
-        from django.contrib.auth.models import User
-        from .models import SignInRecord
-        for r in legacy_qs:
-            student = User.objects.filter(pk=r.student_id).first()
-
-            # skip any student who is not enrolled in this instructor's section
-            section = request.user.instructor_profile.section
-            if student:
-                try:
-                    sp = student.studentpresence
-                    if not sp or sp.section != section:
-                        continue
-                except Exception:
-                    continue
-            # also exclude instructors themselves
-            if student and InstructorProfile.objects.filter(user=student).exists():
-                continue
-
-            # Try to find a matching SignInRecord to compute entrance_time and duration
-            entrance_time = None
-            duration_minutes = None
-            duration_hours = 0
-            duration_minutes_remainder = 0
-
-            try:
-                # Find the most recent sign-in for this student that has a sign_out_time
-                possible = SignInRecord.objects.filter(student_id=r.student_id, sign_out_time__isnull=False).order_by('-sign_out_time')
-                if possible.exists():
-                    candidate = possible.first()
-                    # If the sign_out_time is reasonably close to the legacy entry_time, use it
-                    time_diff = abs((candidate.sign_out_time - r.entry_time).total_seconds())  # type: ignore
-                    if time_diff <= 300:  # within 5 minutes
-                        entrance_time = candidate.sign_in_time
-                        duration_minutes = candidate.duration_minutes()
-                        duration_hours = int(duration_minutes // 60) if duration_minutes else 0
-                        duration_minutes_remainder = int(duration_minutes % 60) if duration_minutes else 0
-            except Exception:
-                # Fallback: leave computed values as None/0
-                pass
-
-            # Resolve student's section for instructor clarity
-            section_name = ''
-            if student:
-                try:
-                    sp = student.studentpresence
-                    if sp and sp.section:
-                        section_name = str(sp.section)
-                except Exception:
-                    section_name = ''
-
-            # Get student ID number from profile
-            student_id_number = ''
-            if student:
-                try:
-                    profile = student.profile
-                    if profile and profile.student_id_number:
-                        student_id_number = profile.student_id_number
-                except Exception:
-                    student_id_number = ''
-
-            lab_rows.append({
-                'student': student,
-                'student_username': student.username if student else '',
-                'student_full_name': student.get_full_name() if student else str(r.student_id),
-                'section_name': section_name,
-                'student_id_number': student_id_number,
-                'room_name': r.lab_room_number or 'Unknown',
-                'entrance_time': entrance_time,
-                'exit_time': r.entry_time,
+                'entrance_time': r.sign_in_time,
+                'exit_time': r.sign_out_time,
                 'duration_minutes': duration_minutes,
                 'duration_hours': duration_hours,
                 'duration_minutes_remainder': duration_minutes_remainder,
             })
-        total = legacy_qs.count()
     except Exception:
         # if history fetch fails just continue with empty list
         pass

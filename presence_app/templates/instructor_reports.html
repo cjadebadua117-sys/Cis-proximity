@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Instructor Reports | CIS-Prox{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 1200px; margin: 2rem auto;">
+    <div class="card" style="margin-bottom: 1.2rem;">
+        <h1 style="margin-bottom: 0.8rem;">Instructor Reports</h1>
+        <p class="text-muted" style="margin-bottom: 0.8rem;">Section: <strong>{{ section }}</strong></p>
+
+        <form method="get" style="display:flex; gap:0.7rem; flex-wrap:wrap; align-items:flex-end;">
+            <div>
+                <label for="start_date" style="display:block; font-size:0.85rem;">Start Date</label>
+                <input id="start_date" name="start_date" type="date" value="{{ start_date|date:'Y-m-d' }}" class="form-control">
+            </div>
+            <div>
+                <label for="end_date" style="display:block; font-size:0.85rem;">End Date</label>
+                <input id="end_date" name="end_date" type="date" value="{{ end_date|date:'Y-m-d' }}" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-primary">Apply</button>
+            <a class="btn btn-secondary" href="?start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}&export=csv">Export CSV</a>
+        </form>
+    </div>
+
+    <div class="stat-grid" style="margin-bottom: 1.2rem;">
+        <div class="quick-card"><h4>Students</h4><div class="value">{{ total_students }}</div></div>
+        <div class="quick-card"><h4>Room Sign-ins</h4><div class="value">{{ total_signins }}</div></div>
+        <div class="quick-card"><h4>FRC Present</h4><div class="value">{{ total_frc_present }}</div></div>
+        <div class="quick-card"><h4>FRC Absent</h4><div class="value">{{ total_frc_absent }}</div></div>
+        <div class="quick-card"><h4>Cleaning Sessions</h4><div class="value">{{ total_cleaning }}</div></div>
+        <div class="quick-card"><h4>Cleaning Hours</h4><div class="value">{{ total_cleaning_hours }}</div></div>
+    </div>
+
+    <div class="card">
+        <h2 style="margin-bottom: 1rem;">Per-Student Breakdown</h2>
+        {% if rows %}
+        <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.15);">
+                        <th style="text-align:left; padding:0.7rem;">Student</th>
+                        <th style="text-align:center; padding:0.7rem;">Sign-ins</th>
+                        <th style="text-align:center; padding:0.7rem;">FRC Present</th>
+                        <th style="text-align:center; padding:0.7rem;">FRC Absent</th>
+                        <th style="text-align:center; padding:0.7rem;">Cleaning Sessions</th>
+                        <th style="text-align:center; padding:0.7rem;">Cleaning Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+                        <td style="padding:0.7rem;">
+                            <div>{{ row.student_name }}</div>
+                            <div class="text-muted" style="font-size:0.82rem;">@{{ row.username }}</div>
+                        </td>
+                        <td style="text-align:center; padding:0.7rem;">{{ row.signins }}</td>
+                        <td style="text-align:center; padding:0.7rem;">{{ row.frc_present }}</td>
+                        <td style="text-align:center; padding:0.7rem;">{{ row.frc_absent }}</td>
+                        <td style="text-align:center; padding:0.7rem;">{{ row.cleaning_sessions }}</td>
+                        <td style="text-align:center; padding:0.7rem;">{{ row.cleaning_hours }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p class="text-muted">No records found for this date range.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -43,9 +43,9 @@
         </div>
     {% endif %}
 
-    <!-- Active Cleanings -->
+    <!-- Today's Sessions -->
     <div class="card" style="margin-bottom: 2rem;">
-        <h2 style="text-align: left; color: var(--warning); margin-bottom: 1.5rem;">Active Cleanings</h2>
+        <h2 style="text-align: left; color: var(--warning); margin-bottom: 1.5rem;">Today's Cleaning Sessions</h2>
         
         {% if activities %}
             <div style="overflow-x: auto;">
@@ -109,7 +109,66 @@
                     <circle cx="32" cy="36" r="3" fill="#999"/>
                     <circle cx="48" cy="36" r="3" fill="#999"/>
                 </svg>
-                <p style="color: var(--text-muted); margin: 0; font-size:1.1rem;">All caught up! No active cleaning sessions to manage.</p>
+                <p style="color: var(--text-muted); margin: 0; font-size:1.1rem;">No cleaning sessions for today yet.</p>
+                <p style="color: var(--text-muted); margin-top: 0.6rem;">You can still update records from the recent sessions section below.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Sessions -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2 style="text-align: left; color: var(--info); margin-bottom: 1.5rem;">Recent Sessions (Last 7 Days)</h2>
+
+        {% if recent_activities %}
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: rgba(90, 111, 143, 0.12); border-bottom: 2px solid var(--info);">
+                            <th style="padding: 1rem; text-align: left;">Student Name</th>
+                            <th style="padding: 1rem; text-align: center;">Date</th>
+                            <th style="padding: 1rem; text-align: center;">Sign In</th>
+                            <th style="padding: 1rem; text-align: center;">Sign Out</th>
+                            <th style="padding: 1rem; text-align: center;">Adjust Sign-Out Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for activity in recent_activities %}
+                            <tr style="border-bottom: 1px solid rgba(90, 111, 143, 0.25);">
+                                <td style="padding: 1rem; font-weight: bold;">
+                                    {{ activity.student.get_full_name|default:activity.student.username }}
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    {{ activity.sign_in_time|date:"M d, Y" }}
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    {{ activity.sign_in_time|date:"h:i A" }}
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    {% if activity.sign_out_time %}
+                                        {{ activity.sign_out_time|date:"h:i A" }}
+                                    {% else %}
+                                        <span style="color: var(--warning);">Still Active</span>
+                                    {% endif %}
+                                </td>
+                                <td style="padding: 1rem; text-align: center;">
+                                    <form method="POST" action="{% url 'instructor_adjust_signout' activity.id %}" style="display: inline;">
+                                        {% csrf_token %}
+                                        <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">
+                                            <input type="time" name="signout_time" style="padding: 0.5rem; border: 1px solid rgba(255,255,255,0.06); border-radius: 5px; font-size: 0.9rem; background: transparent; color: var(--text-on-dark);" required>
+                                            <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.85rem;">
+                                                Update
+                                            </button>
+                                        </div>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div style="background: var(--bg-muted); padding: 1.2rem; border-radius: 5px; text-align: center; color: var(--text-muted);">
+                No records from the last 7 days.
             </div>
         {% endif %}
     </div>

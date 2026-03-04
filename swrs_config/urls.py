@@ -12,6 +12,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('enroll/', views.enroll, name='enroll'),
     path('profile/', views.profile_view, name='profile'),
+    path('profile/upload-picture/', views.upload_profile_picture, name='upload_profile_picture'),
     path('profile/<str:username>/', views.profile_view, name='profile_view'),
     path('attendance/', views.attendance_dashboard, name='attendance_dashboard'),
     path('activity/signin/', views.activity_signin, name='activity_signin'),
@@ -21,6 +22,7 @@ urlpatterns = [
     path('cleaning/force-signout/<int:activity_id>/', views.admin_force_signout, name='admin_force_signout'),
     # Instructor routes
     path('instructor/dashboard/', views.instructor_dashboard, name='instructor_dashboard'),
+    path('instructor/reports/', views.instructor_reports, name='instructor_reports'),
     path('instructor/frc/mark/<int:student_id>/', views.instructor_mark_frc, name='instructor_mark_frc'),
     path('instructor/signout/manage/', views.instructor_manage_signout, name='instructor_manage_signout'),
     path('instructor/signout/adjust/<int:activity_id>/', views.instructor_adjust_signout, name='instructor_adjust_signout'),

@@ -26,6 +26,10 @@
             <p>{{ instructor_profile.section|default:'—' }}</p>
         </div>
         <div class="quick-card">
+            <h3>Your Room</h3>
+            <p>{{ instructor_profile.instructor_room.name|default:'—' }}</p>
+        </div>
+        <div class="quick-card">
             <h3>Total Students</h3>
             <p>{{ students|length }}</p>
         </div>

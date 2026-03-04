@@ -425,7 +425,8 @@ header {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-    padding: 0.7rem 0;
+    padding: 0;
+    height: 92px;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -441,6 +442,7 @@ nav {
     margin: 0 auto;
     width: 100%;
     padding: 0 2rem;
+    height: 92px;
 }
 
 .nav-container {
@@ -454,11 +456,46 @@ nav {
 /* LOGO */
 .logo {
     text-decoration: none;
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
+    display: block;
     transition: var(--transition);
-    /* font-size will be controlled by nested elements */
+    /* lock header brand sizing/flow */
+    white-space: nowrap;
+}
+
+.logo-brand-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    white-space: nowrap;
+}
+
+.logo-text-group {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+}
+
+.logo-seal {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    object-fit: contain;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 1px;
+    filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+    transition: none;
+}
+
+.logo-divider {
+    width: 1px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 0 12px;
 }
 
 /* modular brand split */
@@ -476,19 +513,34 @@ nav {
 }
 
 .logo-prox {
-    background: #00a2ff; /* Your signature blue */
-    color: #000;         /* Dark text on light background */
-    padding: 2px 8px;
-    border-radius: 4px;
+    background: linear-gradient(135deg, #00A2FF 0%, #00E5FF 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    padding: 0 !important;
+    border-radius: 0;
     margin-left: 2px;
-    font-weight: 800;
+    font-weight: 900;
     font-size: 1.25rem;
+    box-shadow: none;
+    text-shadow: none;
+    filter: drop-shadow(0 0 8px rgba(0, 162, 255, 0.3));
+    letter-spacing: -0.5px;
 }
 
 .logo .logo-main { font-size: 1.2rem; font-weight: 800; }
-.logo .logo-sub { font-size: 0.65rem; color: var(--text-muted); font-weight: 500; text-transform: none; letter-spacing: 0.6px; }
+.logo .logo-sub {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    margin: 0;
+    line-height: 1.2;
+}
 
 .logo:hover { opacity: 0.95; }
+/* logo hover animation removed by request */
 
 /* NAVIGATION LINKS */
 .nav-links {
@@ -496,7 +548,8 @@ nav {
     list-style: none;
     gap: 0.3rem;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    white-space: nowrap;
 }
 
 .nav-link {
@@ -622,6 +675,7 @@ nav {
 }
 
 .btn-logout:hover {
+    background: linear-gradient(135deg, var(--danger), var(--danger-dark));
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(244, 67, 54, 0.4);
 }
@@ -2099,19 +2153,34 @@ footer a:hover {
 
 @media (max-width: 480px) {
     header {
-        padding: 0.6rem 0;
+        padding: 0;
+        height: 92px;
     }
 
     nav {
         padding: 0 0.75rem;
+        height: 92px;
     }
 
     .logo {
-        font-size: 1.1rem;
+        font-size: inherit;
+    }
+
+    .logo-brand-row {
+        gap: 0.7rem;
+    }
+
+    .logo-seal {
+        width: 52px;
+        height: 52px;
+    }
+
+    .logo-divider {
+        height: 30px;
     }
 
     .logo small {
-        font-size: 0.6rem;
+        font-size: 0.65rem;
     }
 
     .container {
@@ -2379,12 +2448,77 @@ footer a:hover {
     margin-bottom: 1rem;
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    gap: 1rem;
 }
 
 .student-name {
     font-weight: 600;
     color: var(--text-on-dark);
+}
+
+.peer-grid {
+    display: grid;
+    grid-template-columns: 80px 1.3fr 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+    width: 100%;
+}
+
+.peer-photo {
+    width: 72px;
+    height: 72px;
+}
+
+.peer-photo img,
+.peer-photo-fallback {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.18);
+}
+
+.peer-photo-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.12);
+    color: var(--text-on-dark);
+    font-weight: 700;
+}
+
+.peer-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.peer-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.peer-value {
+    color: var(--text-on-dark);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.peer-meta {
+    min-width: 160px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.peer-location {
+    color: var(--text-muted);
+    font-size: 0.92rem;
 }
 
 .room-info {
@@ -2698,6 +2832,25 @@ footer a:hover {
     }
     .sidebar {
         display: block;
+    }
+
+    .result-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .peer-grid {
+        grid-template-columns: 72px 1fr;
+        gap: 0.8rem;
+    }
+
+    .peer-field {
+        grid-column: 2 / -1;
+    }
+
+    .peer-meta {
+        min-width: 0;
+        align-items: flex-start;
     }
 }
 

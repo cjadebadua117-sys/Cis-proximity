@@ -35,7 +35,7 @@
         </div>
     {% endif %}
 
-    {% if current_presence %}
+    {% if current_presence and has_active_signin %}
         <div class="dark-bg-container">
             <h3>✓ Currently Signed In</h3>
             <p class="dark-status">
@@ -44,13 +44,13 @@
                 {% else %}
                     Outside department
                 {% endif %}<br>
-                <strong>Signed in at:</strong> {{ current_time_ph|date:"h:i:s A" }}<br>
+                <strong>Signed in at:</strong> {{ signed_in_at|date:"h:i:s A" }}<br>
                 <strong>Time:</strong> {{ current_time_ph|date:"l, F d, Y, h:i A" }} (GMT+8)<br>
                 <strong>Status:</strong> 
-                {% if network_status == 'online' %}
+                {% if has_active_signin %}
                     <span class="status-badge status-online">ONLINE</span>
                 {% else %}
-                    <span class="status-badge status-disconnected">DISCONNECTED</span>
+                    <span class="status-badge status-offline">OFFLINE</span>
                 {% endif %}
             </p>
         </div>
@@ -79,7 +79,7 @@
                         <select id="room_select" name="room_id" required>
                             <option value="">-- Select a location --</option>
                             {% for room in rooms %}
-                                <option value="{{ room.id }}">
+                                <option value="{{ room.id }}" {% if instructor_room and instructor_room.id == room.id %}selected{% endif %}>
                                     {{ room.name }}
                                     {% if room.description %}
                                         ({{ room.description }})

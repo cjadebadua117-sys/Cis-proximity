@@ -11,7 +11,7 @@
 
     <!-- Core Stylesheet - Professional & Modern Design -->
     <!-- versioned stylesheet to force reload when we make changes -->
-    <link rel="stylesheet" href="{% static 'style.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'style.css' %}?v=14">
     <!-- Privacy and other support styles -->
     <link rel="stylesheet" href="{% static 'css/privacy.css' %}?v=2">
     {% block extra_css %}
@@ -100,19 +100,30 @@
             <div class="nav-container">
                 <!-- Logo (role‑based title) -->
                 <a href="/" class="logo">
-                    <span class="logo-container">
-                        <span class="logo-cis">CIS</span>
-                        <span class="logo-prox">Prox</span>
+                    <span class="logo-brand-row">
+                        <img
+                            src="/media/logo-seal.png"
+                            alt="College of Information Systems Seal"
+                            class="logo-seal"
+                            onerror="this.style.display='none';"
+                        >
+                        <span class="logo-divider" aria-hidden="true"></span>
+                        <span class="logo-text-group">
+                            <span class="logo-container">
+                                <span class="logo-cis">CIS</span>
+                                <span class="logo-prox">Prox</span>
+                            </span>
+                            {% if user.is_authenticated %}
+                                {% if is_instructor %}
+                                    <small class="logo-sub">Instructor Management System</small>
+                                {% else %}
+                                    <small class="logo-sub">Student Presence System</small>
+                                {% endif %}
+                            {% else %}
+                                <small class="logo-sub">Presence System</small>
+                            {% endif %}
+                        </span>
                     </span>
-                    {% if user.is_authenticated %}
-                        {% if is_instructor %}
-                            <small class="logo-sub">Instructor Management System</small>
-                        {% else %}
-                            <small class="logo-sub">Student Presence System</small>
-                        {% endif %}
-                    {% else %}
-                        <small class="logo-sub">Presence System</small>
-                    {% endif %}
                 </a>
 
                 <!-- Mobile Menu Toggle (SVG icon, no emojis) -->
