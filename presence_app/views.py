@@ -178,9 +178,7 @@ def register(request):
 
     if request.method == 'POST':
         post_data = request.POST.copy()
-        # Support single-password registration UX by mirroring password1 to password2.
-        if post_data.get('password1') and not post_data.get('password2'):
-            post_data['password2'] = post_data.get('password1')
+        # No longer mirroring password1 to password2 since we have a confirm password field
 
         if 'user_type' not in post_data:
             post_data['user_type'] = 'instructor' if user_type == 'instructor' else 'student'

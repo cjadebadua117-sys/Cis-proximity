@@ -184,6 +184,22 @@
                 {% endif %}
             </div>
 
+            <div class="input-group mb-6 floating-field">
+                <div class="password-wrapper">
+                    <input type="password" id="id_password2" name="password2" class="auth-input pass-input" placeholder=" " required>
+                    <label for="id_password2" class="floating-label">Confirm Password</label>
+                    <button type="button" id="toggleBtn3" class="toggle-password" aria-label="Show password">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+                {% if form.password2.errors %}
+                    <p class="text-red-500 text-xs mt-1">{{ form.password2.errors.0 }}</p>
+                {% endif %}
+            </div>
+
             <button type="submit" class="btn-auth">Create Account</button>
         </form>
 
@@ -233,6 +249,7 @@ function setupToggle(btnId, inputId) {
     });
 }
 setupToggle('toggleBtn2', 'id_password1');
+setupToggle('toggleBtn3', 'id_password2');
 
 document.querySelectorAll('.flash-seed[data-flash-message]').forEach(function(seed, idx) {
     const text = seed.getAttribute('data-flash-message');
