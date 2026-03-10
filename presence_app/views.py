@@ -602,14 +602,22 @@ def peer_search(request):
 
     # Privacy-aware filtering:
     # - ONLY_ME: never visible to others
-    # - PUBLIC: visible
-    # - FRIENDS_ONLY: visible to classmates (same section)
+    # - PUBLIC: visible to everyone
+    # - FRIENDS_ONLY: visible only if the searching user has been added to their friends list
     visibility_q = Q(student=request.user) | Q(student__profile__privacy_level=UserProfile.PRIVACY_PUBLIC)
+    
+    # For FRIENDS_ONLY, only show if the current user is in the target user's friends list
     if current_section:
         visibility_q |= Q(
             student__profile__privacy_level=UserProfile.PRIVACY_FRIENDS_ONLY,
-            section=current_section
+            student__profile__friends=request.user
         )
+    
+    # Alternative: check FRIENDS_ONLY without section requirement
+    visibility_q |= Q(
+        student__profile__privacy_level=UserProfile.PRIVACY_FRIENDS_ONLY,
+        student__profile__friends=request.user
+    )
 
     base_qs = base_qs.exclude(
         student__profile__privacy_level=UserProfile.PRIVACY_ONLY_ME
@@ -635,32 +643,6 @@ def peer_search(request):
         | Q(student__sign_in_records__sign_out_time__isnull=True)
     ).exclude(student=request.user).order_by('-last_seen').distinct()
 
-    if query:
-        # Search by username, full name, or student ID.
-        if current_section:
-            results = base_qs.filter(
-                section=current_section
-            ).filter(
-                Q(student__username__icontains=query) |
-                Q(student__first_name__icontains=query) |
-                Q(student__last_name__icontains=query) |
-                Q(student__profile__student_id_number__icontains=query)
-            ).exclude(student=request.user).distinct()
-        else:
-            # Fallback: search online students only if not enrolled in a section
-            results = base_qs.filter(
-                Q(student__presence_sessions__is_active=True)
-                | Q(student__sign_in_records__sign_out_time__isnull=True),
-            ).filter(
-                Q(student__username__icontains=query) |
-                Q(student__first_name__icontains=query) |
-                Q(student__last_name__icontains=query) |
-                Q(student__profile__student_id_number__icontains=query)
-            ).exclude(student=request.user).distinct()
-    else:
-        # No query: keep results empty and show online list above.
-        results = None
-
     # Reconcile stale StudentPresence rows using active PresenceSession state.
     def _reconcile_status(presence_obj):
         active_session = active_session_by_user.get(presence_obj.student_id)
@@ -680,6 +662,38 @@ def peer_search(request):
         else:
             presence_obj.current_room = None
 
+    if query:
+        # Search by username, full name, or student ID.
+        # base_qs already respects privacy rules.
+        results = base_qs.filter(
+            Q(student__username__icontains=query) |
+            Q(student__first_name__icontains=query) |
+            Q(student__last_name__icontains=query) |
+            Q(student__profile__student_id_number__icontains=query)
+        ).exclude(student=request.user).distinct()
+
+        # partition into public vs custom (friends-only) lists for display
+        public_results = []
+        custom_results = []
+        for presence in results:
+            try:
+                level = presence.student.profile.privacy_level
+            except Exception:
+                level = None
+            if level == UserProfile.PRIVACY_PUBLIC:
+                public_results.append(presence)
+            elif level == UserProfile.PRIVACY_FRIENDS_ONLY:
+                custom_results.append(presence)
+        # reconcile statuses for both partitions
+        for presence in public_results + custom_results:
+            _reconcile_status(presence)
+        results = None  # clear original to avoid confusion, use new lists
+    else:
+        # No query: keep results empty and show online list above.
+        public_results = []
+        custom_results = []
+        results = None
+
     if results is not None:
         for row in results:
             _reconcile_status(row)
@@ -689,7 +703,8 @@ def peer_search(request):
     
     context = {
         'query': query,
-        'results': results,
+        'public_results': public_results,
+        'custom_results': custom_results,
         'online_students': online_students,
     }
     
@@ -829,14 +844,20 @@ def privacy_update(request):
 @login_required(login_url='login')
 def search_peers_api(request):
     """
-    API endpoint to search for peers by username with strict privacy controls.
+    API endpoint to search for peers by username.  Used both by the peer
+    discovery page and by the privacy manager when adding allowed friends.
     
-    Privacy Rules:
-    - PUBLIC: User appears to everyone
-    - FRIENDS_ONLY (Custom): User only appears to classmates (same section)
-    - ONLY_ME: User never appears in search results for anyone else
-    
-    All filtering happens at database level for security.
+    Privacy rules are evaluated from the perspective of the account being
+    queried (i.e. the user whose name is being searched):
+
+    - PUBLIC: everyone can see the user.
+    - FRIENDS_ONLY ("Custom"): only people explicitly added to that user's
+      friends/access list may see them.
+    - ONLY_ME: the user never appears in search results for anyone else.
+
+    When invoked from the privacy manager the returned list is also filtered
+    to remove any users that the searching account has already added (so you
+    cannot add the same friend twice).
     """
     query = request.GET.get('q', '').strip()
     
@@ -857,10 +878,20 @@ def search_peers_api(request):
         studentpresence__isnull=False  # Only actual students
     ).exclude(id=request.user.id).distinct()
     
+    # Determine users already in the searcher's access list so we can hide them
+    try:
+        searcher_profile = UserProfile.objects.get(user=request.user)
+        existing_ids = set(searcher_profile.friends.values_list('id', flat=True))
+    except UserProfile.DoesNotExist:
+        existing_ids = set()
+
     # Now filter by privacy rules at database level
     peers_list = []
     
     for user in matching_users[:50]:  # Check up to 50 matches
+        # skip any user already in the access list
+        if user.id in existing_ids:
+            continue
         try:
             user_profile = user.profile
             user_presence = user.studentpresence
@@ -879,18 +910,17 @@ def search_peers_api(request):
                 })
                 continue
             
-            # RULE 3: FRIENDS_ONLY (Custom) - Show only to classmates
+            # RULE 3: FRIENDS_ONLY (Custom) - Show only if the searcher is allowed by them
             if user_profile.privacy_level == UserProfile.PRIVACY_FRIENDS_ONLY:
-                # Check if they are classmates (same section)
-                if searcher_section and user_presence.section:
-                    if searcher_section.id == user_presence.section.id:
-                        peers_list.append({
-                            'id': user.id,
-                            'username': user.username,
-                            'display_name': f"{user.first_name} {user.last_name}".strip() or user.username,
-                            'privacy': 'custom'
-                        })
-                # If not classmates, don't show them at all (privacy protected)
+                # check whether the searching user has been granted access
+                if request.user in user_profile.friends.all():
+                    peers_list.append({
+                        'id': user.id,
+                        'username': user.username,
+                        'display_name': f"{user.first_name} {user.last_name}".strip() or user.username,
+                        'privacy': 'custom'
+                    })
+                # otherwise don't include them
                 continue
         
         except (UserProfile.DoesNotExist, StudentPresence.DoesNotExist):
@@ -1894,7 +1924,12 @@ def presence_signout(request):
 def presence_search(request):
     """
     CIS-Prox Peer Discovery: Search for classmates' real-time locations.
-    Returns active sessions for searched users.
+    Returns active sessions for searched users with privacy controls applied.
+    
+    Privacy Rules:
+    - PUBLIC: User appears to everyone
+    - CUSTOM (FRIENDS_ONLY): User only appears to people who have been added to their friends list
+    - ONLY_ME: User never appears in search results for anyone else
     """
     query = request.GET.get('q', '').strip()
     results = []
@@ -1904,6 +1939,14 @@ def presence_search(request):
         if len(query) < 2:
             error = "Please enter at least 2 characters."
         else:
+            # Get the searching user's section for classmate verification
+            try:
+                searcher_presence = StudentPresence.objects.get(student=request.user)
+                searcher_section = searcher_presence.section
+            except StudentPresence.DoesNotExist:
+                # If searcher has no section, they can only see PUBLIC users
+                searcher_section = None
+            
             # Search for users by username or first/last name
             from django.db.models import Q
             
@@ -1913,21 +1956,56 @@ def presence_search(request):
                 Q(last_name__icontains=query)
             ).exclude(id=request.user.id)  # Exclude self
             
-            # Get active sessions for these users
+            # Get active sessions for these users while respecting privacy
             for user in users:
-                session = PresenceSession.objects.filter(
-                    user=user,
-                    is_active=True,
-                    is_verified=True
-                ).first()
+                try:
+                    user_profile = user.profile
+                    user_presence = user.studentpresence
+                    
+                    # RULE 1: ONLY_ME - Never show in search results
+                    if user_profile.privacy_level == UserProfile.PRIVACY_ONLY_ME:
+                        continue
+                    
+                    # RULE 2: PUBLIC - Show to everyone
+                    if user_profile.privacy_level == UserProfile.PRIVACY_PUBLIC:
+                        session = PresenceSession.objects.filter(
+                            user=user,
+                            is_active=True,
+                            is_verified=True
+                        ).first()
+                        
+                        if session:
+                            results.append({
+                                'user': user,
+                                'room': session.room,
+                                'signed_in_at': session.signed_in_at,
+                                'duration': session.duration_minutes(),
+                            })
+                        continue
+                    
+                    # RULE 3: CUSTOM (FRIENDS_ONLY) - Show only to people on their access list
+                    if user_profile.privacy_level == UserProfile.PRIVACY_FRIENDS_ONLY:
+                        # only allow if searching user is in their friends list
+                        if request.user in user_profile.friends.all():
+                            session = PresenceSession.objects.filter(
+                                user=user,
+                                is_active=True,
+                                is_verified=True
+                            ).first()
+                            
+                            if session:
+                                results.append({
+                                    'user': user,
+                                    'room': session.room,
+                                    'signed_in_at': session.signed_in_at,
+                                    'duration': session.duration_minutes(),
+                                })
+                        # otherwise do not include them
+                        continue
                 
-                if session:
-                    results.append({
-                        'user': user,
-                        'room': session.room,
-                        'signed_in_at': session.signed_in_at,
-                        'duration': session.duration_minutes(),
-                    })
+                except (UserProfile.DoesNotExist, StudentPresence.DoesNotExist):
+                    # Skip users without profiles
+                    continue
             
             if not results and len(query) >= 2:
                 error = f"No active peers found matching '{query}'."

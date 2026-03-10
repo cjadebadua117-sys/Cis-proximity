@@ -55,57 +55,27 @@
 
     {% if query %}
         <div class="results">
-            {% if results %}
-                <h3 style="margin-bottom: 1rem; color: var(--text-on-dark);">
-                    Found {{ results|length }} student{{ results|length|pluralize }}:
-                </h3>
-                {% for presence in results %}
-                    <div class="result-item">
-                        <div class="peer-grid">
-                            <div class="peer-photo">
-                                {% if presence.student.profile.profile_picture %}
-                                    <img src="{{ presence.student.profile.profile_picture.url }}" alt="{{ presence.student.username }}">
-                                {% else %}
-                                    <div class="peer-photo-fallback">
-                                        {{ presence.student.username|first|upper }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="peer-field">
-                                <span class="peer-label">Full Name</span>
-                                <span class="peer-value">{{ presence.student.get_full_name|default:presence.student.username }}</span>
-                            </div>
-                            <div class="peer-field">
-                                <span class="peer-label">Student ID</span>
-                                <span class="peer-value">{{ presence.student.profile.student_id_number|default:"-" }}</span>
-                            </div>
-                            <div class="peer-field">
-                                <span class="peer-label">Phone Number</span>
-                                <span class="peer-value">{{ presence.student.profile.phone_number|default:"-" }}</span>
-                            </div>
-                        </div>
+            {# Custom/friends-only results #}
+            {% if custom_results %}
+                <h3 style="margin-bottom: 0.5rem; color: var(--text-on-dark);">Allowed peers (added you)</h3>
+                <div class="result-group">
+                    {% for presence in custom_results %}
+                        {% include 'search_result_item.html' with presence=presence %}
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-                        <div class="peer-meta">
-                            {% if presence.resolved_online|default:presence.is_online %}
-                                <span class="status-badge status-online">ONLINE</span>
-                            {% else %}
-                                <span class="status-badge status-offline">OFFLINE</span>
-                            {% endif %}
+            {# Public results #}
+            {% if public_results %}
+                <h3 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-on-dark);">Everyone else</h3>
+                <div class="result-group">
+                    {% for presence in public_results %}
+                        {% include 'search_result_item.html' with presence=presence %}
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-                            {% if presence.current_room %}
-                                <div class="peer-location">
-                                    <span class="room-info">
-                                        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor">
-                                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
-                                        </svg>
-                                        {{ presence.current_room.name }}
-                                    </span>
-                                </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endfor %}
-            {% else %}
+            {% if not custom_results and not public_results %}
                 <div class="alert alert-info">
                     No students found matching "{{ query }}". Please try a different search term.
                 </div>
