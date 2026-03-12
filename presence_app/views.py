@@ -222,20 +222,21 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect('home')
     
+    error_message = None
+    username = ''
     if request.method == 'POST':
         # normalize the username to lowercase to match registration behavior
         username = request.POST.get('username','').lower()
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
-        
         if user is not None:
             login(request, user)
             return redirect('dashboard')
         else:
-            # authentication failed – do not flash any message to keep login page clean
-            pass
-    
-    return render(request, 'login.html')
+            error_message = 'Invalid username or password.'
+    else:
+        username = request.POST.get('username','')
+    return render(request, 'login.html', {'error_message': error_message, 'username': username})
 
 
 @login_required(login_url='login')
