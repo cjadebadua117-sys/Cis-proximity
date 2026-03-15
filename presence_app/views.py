@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.views.decorators.http import require_http_methods
 from .models import Room, StudentPresence, Section, UserProfile, InstructorProfile, SignInRecord, FlagRaisingCeremony, ActivityHour, PresenceSession, LaboratoryHistory, LegacyLaboratoryHistory, Broadcast
 from .utils import is_on_university_wifi, get_client_ip
@@ -190,15 +190,17 @@ def register(request):
 
             if user_type_value == 'instructor':
                 InstructorProfile.objects.create(user=user, section=None)
-                messages.success(request, 'Instructor account created successfully! Please log in.')
+                messages.success(request, 'Instructor account created successfully!')
             else:
                 student_id_number = form.cleaned_data.get('student_id_number', '').strip()
                 if student_id_number:
                     user.profile.student_id_number = student_id_number
                     user.profile.save()
-                messages.success(request, 'Student account created successfully! Please log in.')
+                messages.success(request, 'Student account created successfully!')
 
-            return redirect('login')
+            # Log in the user immediately and send them to the home page (features overview)
+            login(request, user)
+            return redirect('home')
 
         for field, errors in form.errors.items():
             for error in errors:
@@ -221,21 +223,25 @@ def login_view(request):
 
     if request.user.is_authenticated:
         return redirect('home')
-    
+
+    # Use Django's built-in authentication form to render errors and keep entered fields.
+    form = AuthenticationForm(request=request, data=request.POST or None)
+
     if request.method == 'POST':
-        # normalize the username to lowercase to match registration behavior
-        username = request.POST.get('username','').lower()
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        
-        if user is not None:
+        # Normalize username to lowercase to match registration behavior
+        post_data = request.POST.copy()
+        post_data['username'] = post_data.get('username', '').lower()
+        form = AuthenticationForm(request=request, data=post_data)
+
+        if form.is_valid():
+            user = form.get_user()
             login(request, user)
             return redirect('dashboard')
         else:
-            # authentication failed – do not flash any message to keep login page clean
-            pass
-    
-    return render(request, 'login.html')
+            # authentication failed, show a user-friendly error
+            messages.error(request, 'Invalid username or password.')
+
+    return render(request, 'login.html', {'form': form})
 
 
 @login_required(login_url='login')
