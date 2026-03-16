@@ -101,7 +101,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'cisproximity',         
         'USER': 'root',                
-        'PASSWORD': 'password',    
+        'PASSWORD': 'Password',    
         'HOST': '127.0.0.1',           
         'PORT': '3306',
     }
