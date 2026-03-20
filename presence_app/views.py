@@ -1416,6 +1416,24 @@ def instructor_dashboard(request):
     except InstructorProfile.DoesNotExist:
         messages.error(request, 'You do not have instructor privileges.')
         return redirect('home')
+
+    # Get all rooms for the dropdown
+    all_rooms = Room.objects.all().order_by('name')
+
+    # Handle room selection
+    if request.method == 'POST' and 'room_id' in request.POST:
+        room_id = request.POST.get('room_id')
+        if room_id:
+            room = get_object_or_404(Room, id=room_id)
+            instructor_profile.instructor_room = room
+            instructor_profile.save()
+            messages.success(request, f'Your active room has been set to {room.name}.')
+        else:
+            # Handle case where "None" or empty value is selected
+            instructor_profile.instructor_room = None
+            instructor_profile.save()
+            messages.success(request, 'Your active room has been cleared.')
+        return redirect('instructor_dashboard')
     
     # Get students in this instructor's section
     section = instructor_profile.section
@@ -1512,6 +1530,7 @@ def instructor_dashboard(request):
         'frc_percentage': frc_percentage,
         'heatmap_students': heatmap_students,
         'heatmap_padding': heatmap_padding,
+        'all_rooms': all_rooms,
     }
     
     return render(request, 'instructor_dashboard.html', context)

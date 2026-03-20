@@ -4,6 +4,22 @@
 {% block title %}Instructor Dashboard | CIS-Prox{% endblock %}
 
 {% block content %}
+<style>
+    .room-select {
+        background-color: #1e293b;
+        color: #cbd5e1;
+        border: 1px solid #334155;
+        border-radius: 0.375rem;
+        padding: 0.5rem 1rem;
+        width: 100%;
+        font-size: 1rem;
+    }
+    .room-select:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5);
+    }
+</style>
 <div style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
     <h1 style="text-align: center; margin-bottom: 1rem;">Instructor Dashboard</h1>
     
@@ -27,7 +43,15 @@
         </div>
         <div class="quick-card">
             <h3>Your Room</h3>
-            <p>{{ instructor_profile.instructor_room.name|default:'—' }}</p>
+            <form method="POST" id="room-selection-form">
+                {% csrf_token %}
+                <select name="room_id" class="room-select" onchange="this.form.submit()">
+                    <option value="" {% if not instructor_profile.instructor_room %}selected{% endif %}>-- Select a Room --</option>
+                    {% for room in all_rooms %}
+                        <option value="{{ room.id }}" {% if instructor_profile.instructor_room.id == room.id %}selected{% endif %}>{{ room.name }}</option>
+                    {% endfor %}
+                </select>
+            </form>
         </div>
         <div class="quick-card">
             <h3>Total Students</h3>
