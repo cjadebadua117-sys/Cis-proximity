@@ -89,6 +89,10 @@
     const searchResultsList = document.getElementById('searchResultsList');
     const allowedFriendsList = document.getElementById('allowedFriendsList');
 
+    if (form) {
+        form.addEventListener('submit', (e) => e.preventDefault());
+    }
+
     if (searchBtn) {
         searchBtn.addEventListener('click', function(e) {
             e.preventDefault();
@@ -121,6 +125,11 @@
         fetch('/api/privacy/allowed-friends/')
             .then(res => res.json())
             .then(data => {
+                if (data.success === false) {
+                    createToast('error', 'Error', data.message || 'Could not load friends.');
+                    return;
+                }
+
                 if (data.allowed_friends && data.allowed_friends.length > 0) {
                     allowedFriendsList.innerHTML = data.allowed_friends.map(friend => `
                         <div style="padding: 0.7rem; border-bottom: 1px solid rgba(255,255,255,0.04); display: flex; justify-content: space-between; align-items: center;">
@@ -136,7 +145,7 @@
                     allowedFriendsList.innerHTML = '<p style="color: var(--text-muted); text-align: center; padding: 1rem;">No friends have access yet</p>';
                 }
             })
-            .catch(err => console.error('Error loading allowed friends:', err));
+            .catch(err => createToast('error', 'Error', err.message || 'Could not load friends.'));
     }
 
     function removeFriend(e, friendId){
@@ -145,17 +154,21 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({friend_id: friendId})
         })
         .then(res => res.json())
         .then(data => {
-            if (data.status === 'ok') {
+            if (data.success) {
+                createToast('success', 'Done', data.message || 'Removed.');
                 loadAllowedFriends();
+                return;
             }
+            createToast('error', 'Error', data.message || 'Could not remove friend.');
         })
-        .catch(err => console.error('Error removing friend:', err));
+        .catch(err => createToast('error', 'Error', err.message || 'Could not remove friend.'));
     }
 
     function addFriend(friendId){
@@ -163,19 +176,23 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                'X-CSRFToken': getCSRFToken(),
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({friend_id: friendId})
         })
         .then(res => res.json())
         .then(data => {
-            if (data.status === 'ok') {
+            if (data.success) {
+                createToast('success', 'Done', data.message || 'Added.');
                 loadAllowedFriends();
                 searchBox.value = '';
                 searchResultsContainer.style.display = 'none';
+                return;
             }
+            createToast('error', 'Error', data.message || 'Could not add friend.');
         })
-        .catch(err => console.error('Error adding friend:', err));
+        .catch(err => createToast('error', 'Error', err.message || 'Could not add friend.'));
     }
 
     function performSearch(){
@@ -205,7 +222,7 @@
                     searchResultsContainer.style.display = 'block';
                 }
             })
-            .catch(err => console.error('Search error:', err));
+            .catch(err => createToast('error', 'Error', err.message || 'Search failed.'));
     }
 
     if (searchBox) {
@@ -235,19 +252,24 @@
         hidden.value = this.value;
         updateUI();
 
-        const formData = new FormData(form);
         fetch(form.action, {
             method: 'POST',
-            body: formData,
             headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
                 'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ privacy_level: hidden.value })
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) {
+                createToast('error', 'Error', data.message || 'Could not update privacy.');
+                return;
             }
+            createToast('success', 'Done', data.message || 'Privacy updated.');
         })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Privacy updated:', data);
-        })
-        .catch(error => console.error('Error:', error));
+        .catch(error => createToast('error', 'Error', error.message || 'Could not update privacy.'));
     }));
 })();
 </script>

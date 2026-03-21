@@ -166,6 +166,10 @@
         margin-top: 4px;
     }
 
+    .field-errors:empty {
+        display: none;
+    }
+
     .btn-row {
         margin-top: 34px;
         display: flex;
@@ -340,30 +344,30 @@
 
         <div class="id-main">
             <div class="welcome-text">
-                <h1>{{ profile_user.first_name|default:profile_user.username|capfirst }}'s Profile</h1>
+                <h1 id="profile-title">{{ profile_user.first_name|default:profile_user.username|capfirst }}'s Profile</h1>
                 <span>Manage your professional identity and account settings.</span>
             </div>
 
             <div id="profile-display" class="info-grid-premium">
                 <div class="data-cell">
                     <label>Full Name</label>
-                    <p>{{ profile_user.get_full_name|default:"Not Provided" }}</p>
+                    <p id="profile-display-full-name">{{ profile_user.get_full_name|default:"Not Provided" }}</p>
                 </div>
                 <div class="data-cell">
                     <label>Email Address</label>
-                    <p>{{ profile_user.email|default:"Not Provided" }}</p>
+                    <p id="profile-display-email">{{ profile_user.email|default:"Not Provided" }}</p>
                 </div>
                 <div class="data-cell">
                     <label>{% if is_instructor %}Instructor ID{% else %}Student ID{% endif %}</label>
-                    <p>{{ profile.student_id_number|default:"Pending" }}</p>
+                    <p id="profile-display-student-id">{{ profile.student_id_number|default:"Pending" }}</p>
                 </div>
                 <div class="data-cell">
                     <label>Phone Number</label>
-                    <p>{{ profile.phone_number|default:"Not Provided" }}</p>
+                    <p id="profile-display-phone">{{ profile.phone_number|default:"Not Provided" }}</p>
                 </div>
                 <div class="data-cell" style="grid-column: 1 / -1;">
                     <label>Bio</label>
-                    <p>{{ profile.bio|default:"No bio yet." }}</p>
+                    <p id="profile-display-bio">{{ profile.bio|default:"No bio yet." }}</p>
                 </div>
                 <div class="data-cell">
                     <label>Member Since</label>
@@ -378,32 +382,32 @@
                     <div class="data-cell">
                         <label>First Name</label>
                         {{ form.first_name }}
-                        {% if form.first_name.errors %}<div class="field-errors">{{ form.first_name.errors|striptags }}</div>{% endif %}
+                        <div class="field-errors" id="error-first_name">{% if form.first_name.errors %}{{ form.first_name.errors|striptags }}{% endif %}</div>
                     </div>
                     <div class="data-cell">
                         <label>Last Name</label>
                         {{ form.last_name }}
-                        {% if form.last_name.errors %}<div class="field-errors">{{ form.last_name.errors|striptags }}</div>{% endif %}
+                        <div class="field-errors" id="error-last_name">{% if form.last_name.errors %}{{ form.last_name.errors|striptags }}{% endif %}</div>
                     </div>
                     <div class="data-cell">
                         <label>Email Address</label>
                         {{ form.email }}
-                        {% if form.email.errors %}<div class="field-errors">{{ form.email.errors|striptags }}</div>{% endif %}
+                        <div class="field-errors" id="error-email">{% if form.email.errors %}{{ form.email.errors|striptags }}{% endif %}</div>
                     </div>
                     <div class="data-cell">
                         <label>{% if is_instructor %}Instructor ID{% else %}Student ID{% endif %}</label>
                         {{ form.student_id_number }}
-                        {% if form.student_id_number.errors %}<div class="field-errors">{{ form.student_id_number.errors|striptags }}</div>{% endif %}
+                        <div class="field-errors" id="error-student_id_number">{% if form.student_id_number.errors %}{{ form.student_id_number.errors|striptags }}{% endif %}</div>
                     </div>
                     <div class="data-cell">
                         <label>Phone Number</label>
                         {{ form.phone_number }}
-                        {% if form.phone_number.errors %}<div class="field-errors">{{ form.phone_number.errors|striptags }}</div>{% endif %}
+                        <div class="field-errors" id="error-phone_number">{% if form.phone_number.errors %}{{ form.phone_number.errors|striptags }}{% endif %}</div>
                     </div>
                     <div class="data-cell" style="grid-column: 1 / -1;">
                         <label>Bio</label>
                         {{ form.bio }}
-                        {% if form.bio.errors %}<div class="field-errors">{{ form.bio.errors|striptags }}</div>{% endif %}
+                        <div class="field-errors" id="error-bio">{% if form.bio.errors %}{{ form.bio.errors|striptags }}{% endif %}</div>
                     </div>
                 </div>
             </form>
@@ -411,6 +415,12 @@
             <div class="btn-row">
                 <button type="button" id="edit-profile-btn" class="btn-action-premium">Edit Profile</button>
                 <button type="button" id="cancel-edit-btn" class="btn-action-premium secondary hidden">Cancel</button>
+            </div>
+            {% endif %}
+
+            {% if is_own_profile and is_instructor %}
+            <div style="margin-top: 2rem; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 2rem;">
+                {% include 'instructor_privacy_manager.html' %}
             </div>
             {% endif %}
         </div>
@@ -443,7 +453,8 @@
     const cancelBtn = document.getElementById('cancel-edit-btn');
     const profileDisplay = document.getElementById('profile-display');
     const editForm = document.getElementById('profile-edit-form');
-    const csrfToken = document.querySelector('#profile-edit-form input[name="csrfmiddlewaretoken"]').value;
+    const csrfTokenInput = document.querySelector('#profile-edit-form input[name="csrfmiddlewaretoken"]');
+    const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || (csrfTokenInput ? csrfTokenInput.value : '');
     const cropperModal = document.getElementById('cropper-modal');
     const cropperImage = document.getElementById('cropper-image');
     const cropperSaveBtn = document.getElementById('cropper-save-btn');
@@ -474,17 +485,155 @@
 
     applyEditMode(editMode);
 
+    function captureEditValues() {
+        const values = {};
+        if (!editForm) return values;
+        const fd = new FormData(editForm);
+        fd.forEach((value, key) => {
+            if (key === 'csrfmiddlewaretoken') return;
+            values[key] = value;
+        });
+        return values;
+    }
+
+    function restoreEditValues(values) {
+        if (!editForm) return;
+        Object.keys(values || {}).forEach((key) => {
+            const field = editForm.querySelector(`[name="${key}"]`);
+            if (field) field.value = values[key] ?? '';
+        });
+    }
+
+    function clearFieldErrors() {
+        if (editForm) {
+            editForm.querySelectorAll('.field-errors').forEach(el => { el.textContent = ''; });
+            editForm.querySelectorAll('[aria-invalid="true"]').forEach(el => el.removeAttribute('aria-invalid'));
+        }
+    }
+
+    function applyFieldErrors(errors) {
+        if (!errors) return;
+        Object.keys(errors).forEach((fieldName) => {
+            const target = document.getElementById(`error-${fieldName}`);
+            if (target) target.textContent = (errors[fieldName] || []).join(' ');
+            if (editForm) {
+                const input = editForm.querySelector(`[name="${fieldName}"]`);
+                if (input) input.setAttribute('aria-invalid', 'true');
+            }
+        });
+    }
+
+    function updateProfileDisplay(profileData) {
+        if (!profileData) return;
+
+        const fullNameEl = document.getElementById('profile-display-full-name');
+        const emailEl = document.getElementById('profile-display-email');
+        const studentIdEl = document.getElementById('profile-display-student-id');
+        const phoneEl = document.getElementById('profile-display-phone');
+        const bioEl = document.getElementById('profile-display-bio');
+        const titleEl = document.getElementById('profile-title');
+
+        const fullName = profileData.full_name || profileData.username || '';
+        const email = profileData.email || '';
+        const studentId = profileData.student_id_number || '';
+        const phone = profileData.phone_number || '';
+        const bio = profileData.bio || '';
+
+        if (fullNameEl) fullNameEl.textContent = fullName || 'Not Provided';
+        if (emailEl) emailEl.textContent = email || 'Not Provided';
+        if (studentIdEl) studentIdEl.textContent = studentId || 'Pending';
+        if (phoneEl) phoneEl.textContent = phone || 'Not Provided';
+        if (bioEl) bioEl.textContent = bio || 'No bio yet.';
+
+        if (titleEl) {
+            const displayName = profileData.first_name || profileData.username || 'User';
+            const cap = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+            titleEl.textContent = `${cap}'s Profile`;
+        }
+
+        const navUser = document.querySelector('a.nav-link.user');
+        if (navUser) navUser.textContent = fullName || (profileData.username || navUser.textContent);
+    }
+
+    let savedValues = captureEditValues();
+
+    async function saveProfileChanges() {
+        if (!editForm) return;
+        clearFieldErrors();
+
+        const payload = captureEditValues();
+        editBtn.disabled = true;
+        const prevText = editBtn.textContent;
+        editBtn.textContent = 'Saving...';
+
+        fetch(editForm.action || window.location.pathname, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) {
+                createToast('error', 'Error', data.message || 'Could not save changes.');
+                applyFieldErrors(data.errors || {});
+                return;
+            }
+
+            createToast('success', 'Done', data.message || 'Profile updated.');
+            if (data.profile) {
+                updateProfileDisplay(data.profile);
+                restoreEditValues({
+                    first_name: data.profile.first_name || '',
+                    last_name: data.profile.last_name || '',
+                    email: data.profile.email || '',
+                    student_id_number: data.profile.student_id_number || '',
+                    phone_number: data.profile.phone_number || '',
+                    bio: data.profile.bio || '',
+                });
+                savedValues = captureEditValues();
+            } else {
+                savedValues = captureEditValues();
+            }
+            applyEditMode(false);
+        })
+        .catch((err) => {
+            createToast('error', 'Error', err.message || 'Could not save changes.');
+        })
+        .finally(() => {
+            editBtn.disabled = false;
+            if (editMode) {
+                editBtn.textContent = prevText;
+            }
+        });
+    }
+
     editBtn.addEventListener('click', function () {
         if (!editMode) {
+            savedValues = captureEditValues();
             applyEditMode(true);
             return;
         }
-        editForm.submit();
+        saveProfileChanges();
     });
 
     cancelBtn.addEventListener('click', function () {
-        window.location.reload();
+        restoreEditValues(savedValues);
+        clearFieldErrors();
+        applyEditMode(false);
     });
+
+    if (editForm) {
+        editForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+            if (editMode) {
+                saveProfileChanges();
+            }
+        });
+    }
 
     avatarTrigger.addEventListener('click', function () {
         avatarInput.click();
@@ -508,7 +657,7 @@
         }
 
         if (!file.type.startsWith('image/')) {
-            alert('Please select an image file.');
+            createToast('error', 'Error', 'Please select an image file.');
             avatarInput.value = '';
             return;
         }
@@ -567,7 +716,7 @@
         }
         cropper.getCroppedCanvas({ width: 800, height: 800 }).toBlob(function (blob) {
             if (!blob) {
-                alert('Could not process image.');
+                createToast('error', 'Error', 'Could not process image.');
                 return;
             }
 
@@ -579,22 +728,24 @@
                 body: formData,
                 headers: {
                     'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
                 },
             })
             .then(function (response) {
                 return response.json().then(function (data) {
-                    if (!response.ok) {
-                        throw new Error(data.message || 'Upload failed.');
+                    if (!response.ok || (data && data.success === false)) {
+                        throw new Error((data && data.message) ? data.message : 'Upload failed.');
                     }
                     return data;
                 });
             })
             .then(function (data) {
                 avatarImage.src = data.image_url + '?t=' + Date.now();
+                createToast('success', 'Done', data.message || 'Profile picture updated.');
                 closeCropper();
             })
             .catch(function (error) {
-                alert(error.message || 'Could not upload profile picture.');
+                createToast('error', 'Error', error.message || 'Could not upload profile picture.');
             });
         }, 'image/jpeg', 0.92);
     });

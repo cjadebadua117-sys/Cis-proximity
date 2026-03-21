@@ -64,6 +64,22 @@ class UserProfile(models.Model):
 
     privacy_level = models.CharField(max_length=20, choices=PRIVACY_CHOICES, default=PRIVACY_PUBLIC)
 
+    # Instructor visibility settings (only show/hide from instructor search)
+    INSTRUCTOR_VISIBILITY_EVERYONE = 'everyone'
+    INSTRUCTOR_VISIBILITY_NONE = 'none'
+    
+    INSTRUCTOR_VISIBILITY_CHOICES = [
+        (INSTRUCTOR_VISIBILITY_EVERYONE, 'Everyone'),
+        (INSTRUCTOR_VISIBILITY_NONE, 'None'),
+    ]
+    
+    instructor_visibility = models.CharField(
+        max_length=20,
+        choices=INSTRUCTOR_VISIBILITY_CHOICES,
+        default=INSTRUCTOR_VISIBILITY_EVERYONE,
+        help_text="Determines if instructor is visible in instructor search results"
+    )
+
     # Basic friendship relation: users may add other users as friends
     friends = models.ManyToManyField('auth.User', blank=True, related_name='friends_with')
     

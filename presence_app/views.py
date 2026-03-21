@@ -1,4 +1,6 @@
 # pyright: reportAttributeAccessIssue=false, reportOptionalMemberAccess=false, reportGeneralTypeIssues=false, reportMissingModuleSource=false
+import logging
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
@@ -14,6 +16,9 @@ from django.utils import timezone
 from datetime import datetime, timedelta, date
 from pytz import timezone as tz
 import calendar
+import json
+
+logger = logging.getLogger(__name__)
 from django.db.utils import OperationalError
 from django.http import JsonResponse
 
@@ -443,6 +448,7 @@ def _effective_active_signins_qs():
 @require_http_methods(["POST"])
 def sign_in(request, room_id=None):
     """Handle sign-in to a room."""
+    wants_json = (request.headers.get('Content-Type', '') or '').startswith('application/json') or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not is_on_university_wifi(request):
         # allow override if any instructor for this student's section permits off-network
         allow = False
@@ -454,21 +460,37 @@ def sign_in(request, room_id=None):
         except Exception:
             allow = False
         if not allow:
-            messages.error(request, '❌ You must be connected to University Wi-Fi to enter a room.')
+            if not wants_json:
+                messages.error(request, '❌ You must be connected to University Wi-Fi to enter a room.')
+            if wants_json:
+                return JsonResponse({'success': False, 'message': 'You must be connected to University Wi-Fi to enter a room.'}, status=403)
             return redirect('dashboard')
     
     # Get room_id from POST data if not in URL
     if room_id is None:
-        room_id = request.POST.get('room_id')
+        if wants_json:
+            try:
+                payload = json.loads(request.body or b'{}')
+            except json.JSONDecodeError:
+                payload = {}
+            room_id = payload.get('room_id') or payload.get('room')
+        else:
+            room_id = request.POST.get('room_id')
     
     if not room_id:
-        messages.error(request, 'Please select a room.')
+        if not wants_json:
+            messages.error(request, 'Please select a room.')
+        if wants_json:
+            return JsonResponse({'success': False, 'message': 'Please select a room.'}, status=400)
         return redirect('dashboard')
     
     try:
         room = get_object_or_404(Room, id=room_id)
     except:
-        messages.error(request, 'Room not found.')
+        if not wants_json:
+            messages.error(request, 'Room not found.')
+        if wants_json:
+            return JsonResponse({'success': False, 'message': 'Room not found.'}, status=404)
         return redirect('dashboard')
     
     # Get or create student presence record
@@ -483,7 +505,14 @@ def sign_in(request, room_id=None):
     )
     if active_signins:
         if len(active_signins) == 1 and active_signins[0].room_id == room.id:
-            messages.info(request, f'You are already signed in to {room.name}.')
+            if not wants_json:
+                messages.info(request, f'You are already signed in to {room.name}.')
+            if wants_json:
+                return JsonResponse({
+                    'success': True,
+                    'message': f'You are already signed in to {room.name}.',
+                    'room': {'id': room.id, 'name': room.name},
+                })
             return redirect('dashboard')
 
         close_time = timezone.now()
@@ -525,10 +554,21 @@ def sign_in(request, room_id=None):
             pass
     
     if created:
-        messages.success(request, f'✓ Signed in to {room.name}')
+        message = f'✓ Signed in to {room.name}'
+        if not wants_json:
+            messages.success(request, message)
     else:
-        messages.success(request, f'✓ Updated location to {room.name}')
-    
+        message = f'✓ Updated location to {room.name}'
+        if not wants_json:
+            messages.success(request, message)
+
+    if wants_json:
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'room': {'id': room.id, 'name': room.name},
+        })
+
     return redirect('dashboard')
 
 
@@ -536,6 +576,7 @@ def sign_in(request, room_id=None):
 @require_http_methods(["POST"])
 def sign_out(request):
     """Handle sign-out (mark as offline)."""
+    wants_json = (request.headers.get('Content-Type', '') or '').startswith('application/json') or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     try:
         presence = StudentPresence.objects.get(student=request.user)
         presence.is_online = False
@@ -576,9 +617,18 @@ def sign_out(request):
                     # If that also fails, ignore to avoid breaking sign-out flow
                     pass
 
-        messages.success(request, '✓ You have been signed out.')
+        message = '✓ You have been signed out.'
+        if not wants_json:
+            messages.success(request, message)
     except StudentPresence.DoesNotExist:
-        messages.error(request, 'No active sign-in found.')
+        message = 'No active sign-in found.'
+        if not wants_json:
+            messages.error(request, message)
+        if wants_json:
+            return JsonResponse({'success': False, 'message': message}, status=404)
+
+    if wants_json:
+        return JsonResponse({'success': True, 'message': message})
 
     return redirect('dashboard')
 
@@ -592,6 +642,12 @@ def peer_search(request):
     only classmates who are currently online.  Privacy settings are always respected.
     """
     query = request.GET.get('q', '').strip()
+    selected_role = request.GET.get('role', 'student').lower().strip()
+    if selected_role not in ['student', 'instructor']:
+        selected_role = 'student'
+
+    online_title = 'Students Currently Online' if selected_role == 'student' else 'Instructors Currently Online'
+
     results = None
     online_students = None
     
@@ -604,28 +660,40 @@ def peer_search(request):
     # Base queryset with profile preloaded for layout data (photo, student id, phone).
     base_qs = StudentPresence.objects.select_related('student', 'current_room', 'student__profile')
 
-    # Privacy-aware filtering:
-    # - ONLY_ME: never visible to others
-    # - PUBLIC: visible to everyone
-    # - FRIENDS_ONLY: visible only if the searching user has been added to their friends list
-    visibility_q = Q(student=request.user) | Q(student__profile__privacy_level=UserProfile.PRIVACY_PUBLIC)
+    # Role filtering: students vs instructors.
+    if selected_role == 'student':
+        # pick only student accounts (exclude instructor profile link)
+        base_qs = base_qs.filter(student__instructor_profile__isnull=True)
+    else:
+        # instructor role; use presence sessions to build the instructor online section list instead.
+        # Only show instructors who have instructor_visibility = 'everyone'
+        base_qs = base_qs.filter(
+            student__instructor_profile__isnull=False,
+            student__profile__instructor_visibility=UserProfile.INSTRUCTOR_VISIBILITY_EVERYONE
+        )
     
-    # For FRIENDS_ONLY, only show if the current user is in the target user's friends list
-    if current_section:
+    # Initialize visibility query to avoid UnboundLocalError.
+    visibility_q = Q()
+
+    # Privacy filters only apply to students, not instructors
+    if selected_role == 'student':
+        # For FRIENDS_ONLY, only show if the current user is in the target user's friends list
+        if current_section:
+            visibility_q |= Q(
+                student__profile__privacy_level=UserProfile.PRIVACY_FRIENDS_ONLY,
+                student__profile__friends=request.user
+            )
+        
+        # Alternative: check FRIENDS_ONLY without section requirement
         visibility_q |= Q(
             student__profile__privacy_level=UserProfile.PRIVACY_FRIENDS_ONLY,
             student__profile__friends=request.user
         )
-    
-    # Alternative: check FRIENDS_ONLY without section requirement
-    visibility_q |= Q(
-        student__profile__privacy_level=UserProfile.PRIVACY_FRIENDS_ONLY,
-        student__profile__friends=request.user
-    )
 
-    base_qs = base_qs.exclude(
-        student__profile__privacy_level=UserProfile.PRIVACY_ONLY_ME
-    ).filter(visibility_q)
+        base_qs = base_qs.exclude(
+            student__profile__privacy_level=UserProfile.PRIVACY_ONLY_ME
+        ).filter(visibility_q)
+    # For instructors, visibility is controlled by instructor_visibility field (already filtered above)
 
     # Also consider active PresenceSession and SignInRecord rows as "online" for status accuracy.
     active_sessions = PresenceSession.objects.filter(
@@ -642,10 +710,40 @@ def peer_search(request):
             active_signin_by_user[record.student_id] = record
 
     # Build always-visible online list from active records only.
-    online_students = base_qs.filter(
-        Q(student__presence_sessions__is_active=True)
-        | Q(student__sign_in_records__sign_out_time__isnull=True)
-    ).exclude(student=request.user).order_by('-last_seen').distinct()
+    if selected_role == 'student':
+        online_students = base_qs.filter(
+            Q(student__presence_sessions__is_active=True)
+            | Q(student__sign_in_records__sign_out_time__isnull=True)
+        ).exclude(student=request.user).order_by('-last_seen').distinct()
+
+        # Normalize to uniform objects for template consumption
+        online_students = [
+            {
+                'user': p.student,
+                'current_room': p.current_room,
+                'is_online': p.is_online,
+                'original_presence': p,
+            }
+            for p in online_students
+        ]
+    else:
+        # Use PresenceSession for instructors - only show those with instructor_visibility = 'everyone'
+        instructor_sessions = PresenceSession.objects.filter(
+            is_active=True,
+            user__instructor_profile__isnull=False,
+            user__profile__instructor_visibility=UserProfile.INSTRUCTOR_VISIBILITY_EVERYONE
+        ).select_related('user', 'room').order_by('-signed_in_at')
+
+        online_students = []
+        for session in instructor_sessions:
+            if session.user == request.user:
+                continue
+            online_students.append({
+                'user': session.user,
+                'current_room': session.room,
+                'is_online': True,
+                'original_presence': None,
+            })
 
     # Reconcile stale StudentPresence rows using active PresenceSession state.
     def _reconcile_status(presence_obj):
@@ -701,16 +799,70 @@ def peer_search(request):
     if results is not None:
         for row in results:
             _reconcile_status(row)
-    if online_students is not None:
+    if online_students is not None and selected_role == 'student':
         for row in online_students:
-            _reconcile_status(row)
-    
+            # row is now a dict wrapper for data; reconcile actual StudentPresence for student role only
+            if isinstance(row, dict) and row.get('original_presence'):
+                _reconcile_status(row['original_presence'])
+
     context = {
         'query': query,
         'public_results': public_results,
         'custom_results': custom_results,
         'online_students': online_students,
+        'selected_role': selected_role,
+        'online_title': online_title,
     }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        def _serialize_presence(presence_obj):
+            user = getattr(presence_obj, 'student', None)
+            profile = getattr(user, 'profile', None) if user else None
+            resolved_online = getattr(presence_obj, 'resolved_online', None)
+            is_online = bool(resolved_online) if resolved_online is not None else bool(getattr(presence_obj, 'is_online', False))
+            current_room = getattr(presence_obj, 'current_room', None)
+            profile_picture_url = None
+            try:
+                if profile and getattr(profile, 'profile_picture', None):
+                    profile_picture_url = profile.profile_picture.url
+            except Exception:
+                profile_picture_url = None
+
+            return {
+                'username': getattr(user, 'username', ''),
+                'full_name': (user.get_full_name() if user else '') or getattr(user, 'username', ''),
+                'student_id_number': getattr(profile, 'student_id_number', '') or '-',
+                'phone_number': getattr(profile, 'phone_number', '') or '-',
+                'profile_picture_url': profile_picture_url,
+                'is_online': is_online,
+                'room_name': getattr(current_room, 'name', None),
+            }
+
+        def _serialize_online(row):
+            if isinstance(row, dict):
+                user = row.get('user')
+                room = row.get('current_room')
+                return {
+                    'username': getattr(user, 'username', ''),
+                    'room_name': getattr(room, 'name', None) if room else None,
+                }
+
+            user = getattr(row, 'student', None)
+            room = getattr(row, 'current_room', None)
+            return {
+                'username': getattr(user, 'username', ''),
+                'room_name': getattr(room, 'name', None) if room else None,
+            }
+
+        return JsonResponse({
+            'success': True,
+            'query': query,
+            'selected_role': selected_role,
+            'online_title': online_title,
+            'online_students': [ _serialize_online(r) for r in (online_students or []) ],
+            'public_results': [ _serialize_presence(p) for p in (public_results or []) ],
+            'custom_results': [ _serialize_presence(p) for p in (custom_results or []) ],
+        })
     
     return render(request, 'search.html', context)
 
@@ -753,18 +905,68 @@ def profile_view(request, username=None):
             presence.current_room = None
     
     if request.method == 'POST' and is_own_profile:
-        form = ProfileForm(request.POST, instance=profile)
+        wants_json = (
+            request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            or (request.headers.get('Content-Type', '') or '').startswith('application/json')
+        )
+
+        post_data = request.POST
+        if (request.headers.get('Content-Type', '') or '').startswith('application/json'):
+            try:
+                post_data = json.loads(request.body or b'{}')
+            except json.JSONDecodeError:
+                post_data = {}
+
+        form = ProfileForm(post_data, instance=profile)
         if form.is_valid():
             # Update user fields
             user.first_name = form.cleaned_data.get('first_name', '')
             user.last_name = form.cleaned_data.get('last_name', '')
             user.email = form.cleaned_data.get('email', '')
             user.save()
-            
+
             # Update profile
             form.save()
-            messages.success(request, '✓ Profile updated successfully!')
+
+            message = 'Profile updated successfully.'
+            if not wants_json:
+                messages.success(request, f'✓ {message}')
+
+            if wants_json:
+                profile_picture_url = None
+                try:
+                    if profile.profile_picture:
+                        profile_picture_url = profile.profile_picture.url
+                except Exception:
+                    profile_picture_url = None
+
+                return JsonResponse({
+                    'success': True,
+                    'message': message,
+                    'profile': {
+                        'username': user.username,
+                        'first_name': user.first_name,
+                        'last_name': user.last_name,
+                        'full_name': user.get_full_name() or user.username,
+                        'email': user.email or '',
+                        'student_id_number': profile.student_id_number or '',
+                        'phone_number': profile.phone_number or '',
+                        'bio': profile.bio or '',
+                        'profile_picture_url': profile_picture_url,
+                    }
+                })
+
             return redirect(request.path)
+
+        if wants_json:
+            field_errors = {}
+            for field_name, errors in form.errors.items():
+                field_errors[field_name] = [str(e) for e in errors]
+            return JsonResponse({
+                'success': False,
+                'message': 'Please correct the highlighted fields and try again.',
+                'errors': field_errors,
+            }, status=400)
     else:
         initial_data = {
             'first_name': user.first_name,
@@ -790,59 +992,169 @@ def profile_view(request, username=None):
 @require_http_methods(["POST"])
 def upload_profile_picture(request):
     """Upload and persist the authenticated user's profile picture."""
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or (request.headers.get('Content-Type', '') or '').startswith('application/json')
+    )
     profile, _ = UserProfile.objects.get_or_create(user=request.user)
     upload = request.FILES.get('profile_picture')
     if not upload:
-        return JsonResponse({'status': 'error', 'message': 'No file uploaded.'}, status=400)
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'No file uploaded.'}, status=400)
+        messages.error(request, 'No file uploaded.')
+        return redirect(request.META.get('HTTP_REFERER', 'profile'))
 
     if upload.size > (5 * 1024 * 1024):
-        return JsonResponse({'status': 'error', 'message': 'Image must be 5MB or less.'}, status=400)
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Image must be 5MB or less.'}, status=400)
+        messages.error(request, 'Image must be 5MB or less.')
+        return redirect(request.META.get('HTTP_REFERER', 'profile'))
 
     content_type = (upload.content_type or '').lower()
     if not content_type.startswith('image/'):
-        return JsonResponse({'status': 'error', 'message': 'Invalid file type. Upload an image.'}, status=400)
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Invalid file type. Upload an image.'}, status=400)
+        messages.error(request, 'Invalid file type. Upload an image.')
+        return redirect(request.META.get('HTTP_REFERER', 'profile'))
 
     profile.profile_picture = upload
     profile.save()
-    return JsonResponse({'status': 'ok', 'image_url': profile.profile_picture.url})
+    if wants_json:
+        return JsonResponse({
+            'success': True,
+            'status': 'ok',
+            'message': 'Profile picture updated.',
+            'image_url': profile.profile_picture.url,
+        })
+
+    messages.success(request, 'Profile picture updated.')
+    return redirect(request.META.get('HTTP_REFERER', 'profile'))
 
 
 @login_required(login_url='login')
 @require_http_methods(["POST"])
 def privacy_update(request):
     """AJAX endpoint to update the logged-in user's privacy level and selected peers."""
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or (request.headers.get('Content-Type', '') or '').startswith('application/json')
+    )
+    payload = None
+    if (request.headers.get('Content-Type', '') or '').startswith('application/json'):
+        try:
+            payload = json.loads(request.body or b'{}')
+        except json.JSONDecodeError:
+            payload = {}
+    else:
+        payload = request.POST
+
     try:
         profile, created = UserProfile.objects.get_or_create(user=request.user)
     except Exception:
-        return JsonResponse({'status': 'error', 'message': 'Profile not found'}, status=400)
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Profile not found'}, status=400)
+        messages.error(request, 'Profile not found.')
+        return redirect(request.META.get('HTTP_REFERER', 'peer_search'))
 
-    new_level = request.POST.get('privacy_level')
+    new_level = payload.get('privacy_level') if isinstance(payload, dict) else payload.get('privacy_level')
     valid_levels = {c[0] for c in UserProfile.PRIVACY_CHOICES}
     if new_level not in valid_levels:
-        return JsonResponse({'status': 'error', 'message': 'Invalid privacy level'}, status=400)
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Invalid privacy level'}, status=400)
+        messages.error(request, 'Invalid privacy level.')
+        return redirect(request.META.get('HTTP_REFERER', 'peer_search'))
 
     profile.privacy_level = new_level
     
     # Handle selected peers for FRIENDS_ONLY privacy
     if new_level == UserProfile.PRIVACY_FRIENDS_ONLY:
-        import json
-        selected_peers_json = request.POST.get('selected_peers', '[]')
-        try:
-            selected_peer_ids = json.loads(selected_peers_json)
-            # Clear existing friends and add selected ones
-            profile.friends.clear()
-            for peer_id in selected_peer_ids:
-                try:
-                    peer_user = User.objects.get(id=peer_id)
-                    profile.friends.add(peer_user)
-                except User.DoesNotExist:
-                    pass
-        except json.JSONDecodeError:
-            pass
+        selected_peer_ids = None
+        if isinstance(payload, dict) and 'selected_peers' in payload:
+            selected_peer_ids = payload.get('selected_peers')
+        elif hasattr(payload, 'get') and payload.get('selected_peers'):
+            selected_peers_json = payload.get('selected_peers')
+            try:
+                selected_peer_ids = json.loads(selected_peers_json) if isinstance(selected_peers_json, str) else selected_peers_json
+            except json.JSONDecodeError:
+                selected_peer_ids = None
+
+        # Only overwrite the stored access list when the client explicitly sends it.
+        if selected_peer_ids is not None:
+            try:
+                profile.friends.clear()
+                for peer_id in (selected_peer_ids or []):
+                    try:
+                        peer_user = User.objects.get(id=peer_id)
+                        profile.friends.add(peer_user)
+                    except User.DoesNotExist:
+                        continue
+            except Exception:
+                # Never block privacy updates due to friend list issues.
+                pass
     
     profile.save()
 
-    return JsonResponse({'status': 'ok', 'privacy_level': profile.privacy_level})
+    if wants_json:
+        return JsonResponse({
+            'success': True,
+            'status': 'ok',
+            'message': 'Location privacy updated.',
+            'privacy_level': profile.privacy_level,
+        })
+
+    messages.success(request, 'Location privacy updated.')
+    return redirect(request.META.get('HTTP_REFERER', 'peer_search'))
+
+
+@login_required(login_url='login')
+def instructor_privacy_update(request):
+    """AJAX endpoint to update the logged-in instructor's visibility setting."""
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or (request.headers.get('Content-Type', '') or '').startswith('application/json')
+    )
+    if request.method != 'POST':
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'POST required'}, status=400)
+        return redirect(request.META.get('HTTP_REFERER', 'profile'))
+    
+    try:
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+    except Exception:
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Profile not found'}, status=400)
+        messages.error(request, 'Profile not found.')
+        return redirect(request.META.get('HTTP_REFERER', 'profile'))
+
+    if (request.headers.get('Content-Type', '') or '').startswith('application/json'):
+        try:
+            payload = json.loads(request.body or b'{}')
+        except json.JSONDecodeError:
+            payload = {}
+        new_visibility = payload.get('instructor_visibility')
+    else:
+        new_visibility = request.POST.get('instructor_visibility')
+
+    valid_visibilities = {c[0] for c in UserProfile.INSTRUCTOR_VISIBILITY_CHOICES}
+    if new_visibility not in valid_visibilities:
+        if wants_json:
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Invalid visibility setting'}, status=400)
+        messages.error(request, 'Invalid visibility setting.')
+        return redirect(request.META.get('HTTP_REFERER', 'profile'))
+
+    profile.instructor_visibility = new_visibility
+    profile.save()
+
+    if wants_json:
+        return JsonResponse({
+            'success': True,
+            'status': 'ok',
+            'message': 'Location privacy updated.',
+            'instructor_visibility': profile.instructor_visibility,
+        })
+
+    messages.success(request, 'Location privacy updated.')
+    return redirect(request.META.get('HTTP_REFERER', 'profile'))
 
 
 @login_required(login_url='login')
@@ -948,9 +1260,9 @@ def allowed_friends_api(request):
             }
             for friend in allowed_friends
         ]
-        return JsonResponse({'status': 'ok', 'allowed_friends': friends_list})
+        return JsonResponse({'success': True, 'status': 'ok', 'allowed_friends': friends_list})
     except UserProfile.DoesNotExist:
-        return JsonResponse({'status': 'ok', 'allowed_friends': []})
+        return JsonResponse({'success': True, 'status': 'ok', 'allowed_friends': []})
 
 
 @login_required(login_url='login')
@@ -964,15 +1276,15 @@ def add_friend_api(request):
         friend_id = data.get('friend_id')
         
         if not friend_id:
-            return JsonResponse({'status': 'error', 'message': 'Friend ID required'}, status=400)
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Friend ID required'}, status=400)
         
         try:
             friend_user = User.objects.get(id=friend_id)
             profile.friends.add(friend_user)
             profile.save()
-            return JsonResponse({'status': 'ok', 'message': f'Added {friend_user.username} to access list'})
+            return JsonResponse({'success': True, 'status': 'ok', 'message': f'Added {friend_user.username} to access list'})
         except User.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'User not found'}, status=404)
     except UserProfile.DoesNotExist:
         # Create profile if doesn't exist
         profile = UserProfile.objects.create(user=request.user)
@@ -980,11 +1292,11 @@ def add_friend_api(request):
         try:
             friend_user = User.objects.get(id=friend_id)
             profile.friends.add(friend_user)
-            return JsonResponse({'status': 'ok', 'message': f'Added {friend_user.username} to access list'})
+            return JsonResponse({'success': True, 'status': 'ok', 'message': f'Added {friend_user.username} to access list'})
         except User.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'User not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'status': 'error', 'message': str(e)}, status=400)
 
 
 @login_required(login_url='login')
@@ -998,19 +1310,19 @@ def remove_friend_api(request):
         friend_id = data.get('friend_id')
         
         if not friend_id:
-            return JsonResponse({'status': 'error', 'message': 'Friend ID required'}, status=400)
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'Friend ID required'}, status=400)
         
         try:
             friend_user = User.objects.get(id=friend_id)
             profile.friends.remove(friend_user)
             profile.save()
-            return JsonResponse({'status': 'ok', 'message': f'Removed {friend_user.username} from access list'})
+            return JsonResponse({'success': True, 'status': 'ok', 'message': f'Removed {friend_user.username} from access list'})
         except User.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
+            return JsonResponse({'success': False, 'status': 'error', 'message': 'User not found'}, status=404)
     except UserProfile.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Profile not found'}, status=404)
+        return JsonResponse({'success': False, 'status': 'error', 'message': 'Profile not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'status': 'error', 'message': str(e)}, status=400)
 
 
 @login_required(login_url='login')
@@ -1809,21 +2121,38 @@ def presence_signin(request):
     CIS-Prox Sign-In: Verify campus network and create a presence session.
     Only allows sign-in when user is on campus Wi-Fi.
     """
+    wants_json = (request.headers.get('Content-Type', '') or '').startswith('application/json') or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if not is_on_university_wifi(request):
-        messages.error(request, '⚠ You must be connected to campus Wi-Fi to sign in.')
+        if not wants_json:
+            messages.error(request, '⚠ You must be connected to campus Wi-Fi to sign in.')
+        if wants_json:
+            return JsonResponse({'success': False, 'message': 'You must be connected to campus Wi-Fi to sign in.'}, status=403)
         return redirect('home')
     
     if request.method == 'POST':
-        room_id = request.POST.get('room')
+        if wants_json:
+            try:
+                payload = json.loads(request.body or b'{}')
+            except json.JSONDecodeError:
+                payload = {}
+            room_id = payload.get('room') or payload.get('room_id')
+        else:
+            room_id = request.POST.get('room')
         
         if not room_id:
-            messages.error(request, 'Please select a room.')
+            if not wants_json:
+                messages.error(request, 'Please select a room.')
+            if wants_json:
+                return JsonResponse({'success': False, 'message': 'Please select a room.'}, status=400)
             return redirect('presence_signin')
         
         try:
             room = Room.objects.get(id=room_id)
         except Room.DoesNotExist:
-            messages.error(request, 'Invalid room selected.')
+            if not wants_json:
+                messages.error(request, 'Invalid room selected.')
+            if wants_json:
+                return JsonResponse({'success': False, 'message': 'Invalid room selected.'}, status=404)
             return redirect('presence_signin')
         
         # Get client IP
@@ -1836,7 +2165,13 @@ def presence_signin(request):
         ).first()
         
         if active_session:
-            messages.warning(request, f'You already have an active session in {active_session.room.name}. Please sign out first.')
+            if not wants_json:
+                messages.warning(request, f'You already have an active session in {active_session.room.name}. Please sign out first.')
+            if wants_json:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'You already have an active session in {active_session.room.name}. Please sign out first.',
+                }, status=409)
             return redirect('presence_signin')
         
         # Create new presence session
@@ -1871,7 +2206,21 @@ def presence_signin(request):
                 # Keep sign-in successful even if logging fails.
                 pass
         
-        messages.success(request, f'✓ Signed in to {room.name}. Your location is now visible to peers.')
+        message = f'✓ Signed in to {room.name}. Your location is now visible to peers.'
+        if not wants_json:
+            messages.success(request, message)
+        if wants_json:
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'session': {
+                    'room_id': room.id,
+                    'room_name': room.name,
+                    'signed_in_at': session.signed_in_at.isoformat(),
+                    'signed_in_at_display': timezone.localtime(session.signed_in_at).strftime('%b %d, %Y %I:%M %p'),
+                    'duration_minutes': 0,
+                },
+            })
         return redirect('presence_dashboard')
     
     # GET request - show room selection form
@@ -1908,6 +2257,7 @@ def presence_signout(request):
     """
     CIS-Prox Sign-Out: End the active presence session.
     """
+    wants_json = (request.headers.get('Content-Type', '') or '').startswith('application/json') or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     # Find active session
     active_session = PresenceSession.objects.filter(
         user=request.user,
@@ -1915,7 +2265,10 @@ def presence_signout(request):
     ).first()
     
     if not active_session:
-        messages.warning(request, 'You do not have an active session.')
+        if not wants_json:
+            messages.warning(request, 'You do not have an active session.')
+        if wants_json:
+            return JsonResponse({'success': False, 'message': 'You do not have an active session.'}, status=404)
         return redirect('presence_dashboard')
     
     if request.method == 'POST':
@@ -1933,7 +2286,11 @@ def presence_signout(request):
         except StudentPresence.DoesNotExist:
             pass
         
-        messages.success(request, f'✓ Signed out from {room_name}. Session duration: {duration} minutes.')
+        message = f'✓ Signed out from {room_name}. Session duration: {duration} minutes.'
+        if not wants_json:
+            messages.success(request, message)
+        if wants_json:
+            return JsonResponse({'success': True, 'message': message, 'signed_out': True})
         return redirect('presence_dashboard')
     
     # GET request - confirm sign-out
@@ -1955,6 +2312,12 @@ def presence_search(request):
     - ONLY_ME: User never appears in search results for anyone else
     """
     query = request.GET.get('q', '').strip()
+    role = request.GET.get('role', 'student').lower().strip()
+    if role not in ['student', 'instructor']:
+        role = 'student'
+
+    logger.debug('presence_search: role=%s query=%s user=%s', role, query, request.user.username)
+
     results = []
     error = None
     
@@ -1972,72 +2335,140 @@ def presence_search(request):
             
             # Search for users by username or first/last name
             from django.db.models import Q
-            
-            users = User.objects.filter(
-                Q(username__icontains=query) |
-                Q(first_name__icontains=query) |
-                Q(last_name__icontains=query)
-            ).exclude(id=request.user.id)  # Exclude self
+
+            # role-based filter logic for student/instructor
+            if role == 'instructor':
+                users = User.objects.filter(
+                    Q(username__icontains=query) |
+                    Q(first_name__icontains=query) |
+                    Q(last_name__icontains=query),
+                    instructor_profile__isnull=False
+                ).exclude(id=request.user.id)
+            else:
+                users = User.objects.filter(
+                    Q(username__icontains=query) |
+                    Q(first_name__icontains=query) |
+                    Q(last_name__icontains=query),
+                    instructor_profile__isnull=True
+                ).exclude(id=request.user.id)
             
             # Get active sessions for these users while respecting privacy
             for user in users:
                 try:
                     user_profile = user.profile
+                except UserProfile.DoesNotExist:
+                    continue
+
+                user_presence = None
+                try:
                     user_presence = user.studentpresence
-                    
-                    # RULE 1: ONLY_ME - Never show in search results
-                    if user_profile.privacy_level == UserProfile.PRIVACY_ONLY_ME:
-                        continue
-                    
-                    # RULE 2: PUBLIC - Show to everyone
-                    if user_profile.privacy_level == UserProfile.PRIVACY_PUBLIC:
+                except StudentPresence.DoesNotExist:
+                    user_presence = None
+
+                # debug what's stored for this user (useful for instructor detection)
+                logger.debug(
+                    'presence_search user=%s instructor=%s student_presence=%s privacy=%s',
+                    user.username,
+                    hasattr(user, 'instructor_profile'),
+                    bool(user_presence),
+                    user_profile.privacy_level,
+                )
+
+                # RULE 1: ONLY_ME - Never show in search results
+                if user_profile.privacy_level == UserProfile.PRIVACY_ONLY_ME:
+                    continue
+
+                # RULE 2: PUBLIC - Show to everyone
+                if user_profile.privacy_level == UserProfile.PRIVACY_PUBLIC:
+                    session = PresenceSession.objects.filter(
+                        user=user,
+                        is_active=True,
+                        is_verified=True
+                    ).first()
+
+                    if session:
+                        results.append({
+                            'user': user,
+                            'room': session.room,
+                            'signed_in_at': session.signed_in_at,
+                            'duration': session.duration_minutes(),
+                            'role_label': 'Instructor' if hasattr(user, 'instructor_profile') else 'Student',
+                        })
+                    continue
+
+                # RULE 3: CUSTOM (FRIENDS_ONLY) - Show only to people on their access list
+                if user_profile.privacy_level == UserProfile.PRIVACY_FRIENDS_ONLY:
+                    if request.user in user_profile.friends.all():
                         session = PresenceSession.objects.filter(
                             user=user,
                             is_active=True,
                             is_verified=True
                         ).first()
-                        
+
                         if session:
                             results.append({
                                 'user': user,
                                 'room': session.room,
                                 'signed_in_at': session.signed_in_at,
                                 'duration': session.duration_minutes(),
+                                'role_label': 'Instructor' if hasattr(user, 'instructor_profile') else 'Student',
                             })
-                        continue
-                    
-                    # RULE 3: CUSTOM (FRIENDS_ONLY) - Show only to people on their access list
-                    if user_profile.privacy_level == UserProfile.PRIVACY_FRIENDS_ONLY:
-                        # only allow if searching user is in their friends list
-                        if request.user in user_profile.friends.all():
-                            session = PresenceSession.objects.filter(
-                                user=user,
-                                is_active=True,
-                                is_verified=True
-                            ).first()
-                            
-                            if session:
-                                results.append({
-                                    'user': user,
-                                    'room': session.room,
-                                    'signed_in_at': session.signed_in_at,
-                                    'duration': session.duration_minutes(),
-                                })
-                        # otherwise do not include them
-                        continue
-                
-                except (UserProfile.DoesNotExist, StudentPresence.DoesNotExist):
-                    # Skip users without profiles
                     continue
             
             if not results and len(query) >= 2:
-                error = f"No active peers found matching '{query}'."
+                role_label = 'Instructors' if role == 'instructor' else 'Students'
+                error = f"No {role_label.lower()} found matching '{query}'. Please try a different search term."
     
     context = {
         'query': query,
+        'role': role,
+        'selected_role': role.capitalize(),
         'results': results,
         'error': error,
     }
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        serialized_results = []
+        for r in results:
+            user = r.get('user')
+            room = r.get('room')
+            signed_in_at = r.get('signed_in_at')
+            profile_picture_url = None
+            try:
+                if user and hasattr(user, 'profile') and user.profile.profile_picture:
+                    profile_picture_url = user.profile.profile_picture.url
+            except Exception:
+                profile_picture_url = None
+
+            serialized_results.append({
+                'username': getattr(user, 'username', ''),
+                'first_name': getattr(user, 'first_name', ''),
+                'last_name': getattr(user, 'last_name', ''),
+                'full_name': (user.get_full_name() if user else '') or getattr(user, 'username', ''),
+                'role_label': r.get('role_label'),
+                'profile_picture_url': profile_picture_url,
+                'room_name': getattr(room, 'name', None) if room else None,
+                'duration_minutes': r.get('duration'),
+                'signed_in_at': signed_in_at.isoformat() if signed_in_at else None,
+                'signed_in_at_display': timezone.localtime(signed_in_at).strftime('%I:%M %p') if signed_in_at else '',
+            })
+
+        if query and len(query) < 2:
+            return JsonResponse({
+                'success': False,
+                'message': error or 'Please enter at least 2 characters.',
+                'query': query,
+                'role': role,
+                'results': [],
+            }, status=400)
+
+        return JsonResponse({
+            'success': True,
+            'query': query,
+            'role': role,
+            'results': serialized_results,
+            'message': error or '',
+        })
     return render(request, 'presence_search.html', context)
 
 
@@ -2077,13 +2508,23 @@ def presence_dashboard(request):
         sign_out_time__isnull=False
     ).aggregate(total=Sum('sign_out_time', default=0))
     
+    is_on_campus = is_on_university_wifi(request)
+
+    # Provide room list for AJAX sign-in UX on the dashboard (keeps non-JS fallback too).
+    lecture_keywords = ['Classroom', 'Lecture', 'Room 1', 'Room 2', 'Room 3', 'Room 4 (Classroom 4)', 'Room 5']
+    lab_names = ['Lab-1 (Computer Lab 1)', 'ORC']
+    lounge_keywords = ['Lounge', 'Student Lounge']
+    room_names = lecture_keywords + lab_names + lounge_keywords
+    rooms = Room.objects.filter(name__in=room_names).order_by('name') if is_on_campus else Room.objects.none()
+
     context = {
         'active_session': active_session,
         'session_history': session_history,
         'frc_total': frc_total,
         'frc_absent': frc_absent,
         'activity_hours': activity_hours_sessions,
-        'is_on_campus': is_on_university_wifi(request),
+        'is_on_campus': is_on_campus,
+        'rooms': rooms,
     }
     return render(request, 'presence_dashboard.html', context)
 

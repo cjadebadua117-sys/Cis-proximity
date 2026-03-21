@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/privacy/add-friend/', views.add_friend_api, name='add_friend_api'),
     path('api/privacy/remove-friend/', views.remove_friend_api, name='remove_friend_api'),
     path('privacy/update/', views.privacy_update, name='privacy_update'),
+    path('privacy/instructor/update/', views.instructor_privacy_update, name='instructor_privacy_update'),
     # CIS-Prox Presence & Peer Discovery
     path('presence/signin/', views.presence_signin, name='presence_signin'),
     path('presence/signout/', views.presence_signout, name='presence_signout'),

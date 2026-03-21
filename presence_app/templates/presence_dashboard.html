@@ -16,7 +16,7 @@
     <!-- Network Status & Active Session -->
     <div class="row mb-4">
         <div class="col-md-12">
-            <div class="card {% if active_session %}border-success{% else %}border-secondary{% endif %}">
+            <div id="presence-status-card" class="card {% if active_session %}border-success{% else %}border-secondary{% endif %}">
                 <div class="card-header">
                     <h5 class="mb-0">
                         {% if active_session %}
@@ -35,7 +35,7 @@
                             <p><strong>Signed In:</strong> {{ active_session.signed_in_at|date:"M d, Y h:i A" }}</p>
                         </div>
                         <div class="col-md-6 text-end">
-                            <a href="{% url 'presence_signout' %}" class="btn btn-danger">
+                            <a href="{% url 'presence_signout' %}" class="btn btn-danger" id="presence-signout-link">
                                 Sign Out
                             </a>
                         </div>
@@ -55,7 +55,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             {% if is_on_campus %}
-                            <button type="button" class="btn-modern" onclick="startSignin(this, '{% url 'presence_signin' %}')"><span class="spinner"></span><span class="btn-text">Sign In to a Location</span></button>
+                            <a href="{% url 'presence_signin' %}" class="btn-modern" id="presence-open-signin"><span class="spinner"></span><span class="btn-text">Sign In to a Location</span></a>
                             {% else %}
                             <div class="alert alert-danger w-100 mb-0">
                                 <strong>
@@ -258,17 +258,251 @@
 
 </div>
 
+<style>
+  .presence-signin-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 9999;
+  }
+  .presence-signin-modal.active {
+    display: flex;
+  }
+  .presence-signin-panel {
+    width: 100%;
+    max-width: 900px;
+    max-height: 82vh;
+    overflow: auto;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 18px 18px 20px;
+    backdrop-filter: blur(16px);
+  }
+  .presence-signin-panel h5 {
+    color: #fff;
+  }
+  .presence-signin-panel .form-control {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #fff;
+  }
+  .presence-signin-panel .form-control::placeholder {
+    color: rgba(255,255,255,0.45);
+  }
+</style>
+
+<div id="presence-signin-modal" class="presence-signin-modal" aria-hidden="true">
+  <div class="presence-signin-panel">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <h5 class="mb-0">Sign In to a Location</h5>
+      <button type="button" class="btn btn-sm btn-outline-light" id="presence-signin-close">Close</button>
+    </div>
+
+    <input id="presence-room-search" type="text" class="form-control form-control-lg mb-3" placeholder="Where are you now?" autocomplete="off">
+
+    <div class="room-cards" id="presence-room-cards">
+      {% for room in rooms %}
+        <div class="room-card" data-room-id="{{ room.id }}">
+          <svg class="icon" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden="true">
+            {% if "Lab" in room.name %}
+              <path d="M4 4h16v12H4z" stroke="currentColor" stroke-width="2" fill="none"></path>
+              <path d="M8 20h8" stroke="currentColor" stroke-width="2"></path>
+            {% else %}
+              <path d="M3 21v-18h18v18H3zm2-2h14V5H5v14z" fill="none" stroke="currentColor" stroke-width="2"></path>
+            {% endif %}
+          </svg>
+          <div style="margin-top:0.5rem; font-size:0.9rem;">{{ room.name }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <p class="text-muted mt-3 mb-0"><small>Select a room to sign in. Your dashboard updates instantly.</small></p>
+  </div>
+</div>
+
 <script>
-function startSignin(btn,url){
-  btn.classList.add('btn-loading');
-  var text = btn.querySelector('.btn-text');
-  var spinner = btn.querySelector('.spinner');
-  if(text) text.textContent='Signing in...';
-  if(spinner) spinner.style.display='inline-block';
-  setTimeout(function(){ window.location.href = url; }, 700);
+function openPresenceSigninModal() {
+  const modal = document.getElementById('presence-signin-modal');
+  if (!modal) return;
+  modal.classList.add('active');
+  modal.setAttribute('aria-hidden', 'false');
+  document.getElementById('presence-room-search')?.focus();
+}
+
+function closePresenceSigninModal() {
+  const modal = document.getElementById('presence-signin-modal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function renderPresenceStatusSignedIn(session) {
+  const card = document.getElementById('presence-status-card');
+  if (!card) return;
+  card.classList.remove('border-secondary');
+  card.classList.add('border-success');
+
+  const roomName = session?.room_name || 'Unknown';
+  const signedInAt = session?.signed_in_at_display || '';
+  const duration = (session?.duration_minutes ?? 0);
+
+  card.innerHTML = `
+    <div class="card-header">
+      <h5 class="mb-0">
+        <span class="live-badge"><span class="live-dot pulse"></span> Currently Signed In</span>
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-6">
+          <p><strong>Location:</strong> ${roomName}</p>
+          <p><strong>Duration:</strong> ${duration} minutes</p>
+          <p><strong>Signed In:</strong> ${signedInAt}</p>
+        </div>
+        <div class="col-md-6 text-end">
+          <a href="/presence/signout/" class="btn btn-danger" id="presence-signout-link">Sign Out</a>
+        </div>
+      </div>
+      <div class="alert alert-info mt-3 mb-0">
+        <strong>
+          <svg class="icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z"/>
+          </svg>
+          Visibility:
+        </strong> Your location is visible to other students on campus.
+      </div>
+    </div>
+  `;
+}
+
+function renderPresenceStatusSignedOut(isOnCampus) {
+  const card = document.getElementById('presence-status-card');
+  if (!card) return;
+  card.classList.remove('border-success');
+  card.classList.add('border-secondary');
+
+  const action = isOnCampus
+    ? `<a href="/presence/signin/" class="btn-modern" id="presence-open-signin"><span class="spinner"></span><span class="btn-text">Sign In to a Location</span></a>`
+    : `<div class="alert alert-danger w-100 mb-0">
+        <strong>
+          <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <path d="M10.29 3.86L1.82 18a1 1 0 00.86 1.5h18.64a1 1 0 00.86-1.5L13.71 3.86a1 1 0 00-1.72 0z"></path>
+            <path d="M12 9v4" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M12 17h.01" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          Off Campus
+        </strong><br>
+        You are not connected to campus Wi-Fi. Reconnect to sign in.
+      </div>`;
+
+  card.innerHTML = `
+    <div class="card-header">
+      <h5 class="mb-0">
+        <span class="live-badge"><span class="live-dot" style="background:#ccc"></span> Not Currently Signed In</span>
+      </h5>
+    </div>
+    <div class="card-body">
+      <p class="mb-3">
+        You are not currently signed into a location. Your location is <strong>hidden</strong> from peer searches.
+      </p>
+      <div class="row">
+        <div class="col-md-6">
+          ${action}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+  const isOnCampus = {{ is_on_campus|yesno:"true,false" }};
+
+  document.getElementById('presence-signin-close')?.addEventListener('click', closePresenceSigninModal);
+  document.getElementById('presence-signin-modal')?.addEventListener('click', function (e) {
+    if (e.target === this) closePresenceSigninModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePresenceSigninModal();
+  });
+
+  const searchBox = document.getElementById('presence-room-search');
+  const roomCards = Array.from(document.querySelectorAll('#presence-room-cards .room-card'));
+  if (searchBox) {
+    searchBox.addEventListener('input', function () {
+      const q = (this.value || '').toLowerCase();
+      roomCards.forEach(card => {
+        const name = (card.textContent || '').toLowerCase();
+        card.style.display = name.includes(q) ? '' : 'none';
+      });
+    });
+  }
+
+  roomCards.forEach(card => {
+    card.addEventListener('click', function () {
+      const roomId = this.dataset.roomId;
+      if (!roomId) return;
+
+      fetch("{% url 'presence_signin' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ room: roomId })
+      })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok || !data.success) {
+          createToast('error', 'Error', data.message || 'Sign-in failed.');
+          return;
+        }
+        createToast('success', 'Done', data.message || 'Signed in.');
+        closePresenceSigninModal();
+        renderPresenceStatusSignedIn(data.session);
+      })
+      .catch(err => createToast('error', 'Error', err.message || 'Sign-in failed.'));
+    });
+  });
+
+  document.addEventListener('click', function (e) {
+    const openBtn = e.target.closest('#presence-open-signin');
+    if (openBtn) {
+      e.preventDefault();
+      openPresenceSigninModal();
+      return;
+    }
+
+    const signOutBtn = e.target.closest('#presence-signout-link');
+    if (signOutBtn) {
+      e.preventDefault();
+      fetch("{% url 'presence_signout' %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken(),
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({})
+      })
+      .then(res => res.json().then(data => ({ ok: res.ok, data })))
+      .then(({ ok, data }) => {
+        if (!ok || !data.success) {
+          createToast('error', 'Error', data.message || 'Sign-out failed.');
+          return;
+        }
+        createToast('success', 'Done', data.message || 'Signed out.');
+        renderPresenceStatusSignedOut(isOnCampus);
+      })
+      .catch(err => createToast('error', 'Error', err.message || 'Sign-out failed.'));
+    }
+  });
+
   document.querySelectorAll('[data-frc-present]').forEach(function(el){
     var present = parseFloat(el.dataset.frcPresent)||0;
     var total = parseFloat(el.dataset.frcTotal)||0;

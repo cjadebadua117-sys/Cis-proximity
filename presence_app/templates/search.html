@@ -14,78 +14,95 @@
             Find Your Peers
         </h1>
         <p class="subtitle">Search for classmates and their real-time locations</p>
-        <p style="margin-top:0.5rem;"><a href="#how-it-works" class="btn btn-sm">Learn how it works</a></p>
+        <div class="learn-badge-row">
+            <a href="#how-it-works" class="learn-badge" id="learn-how-badge">
+                Learn how it works <span class="learn-badge-arrow" aria-hidden="true">&#9662;</span>
+            </a>
+        </div>
 
         <div class="search-container">
-            <form method="GET" class="search-form">
-                <input 
-                    type="text" 
-                    name="q" 
-                    placeholder="Search by username (e.g., 'Cjade')..." 
-                    value="{{ query }}"
-                    autocomplete="off"
-                >
-                <button type="submit" class="btn">Search</button>
+            <form method="GET" class="search-form" id="presence-search-form">
+                <div id="role-toggle" class="peer-role-toggle" role="tablist" aria-label="Search role">
+                  <div id="toggle-slider" class="peer-role-slider" aria-hidden="true"></div>
+                  <button id="btn-students" class="peer-toggle-btn" type="button" onclick="selectRole('student')">Students</button>
+                  <button id="btn-instructors" class="peer-toggle-btn" type="button" onclick="selectRole('instructor')">Instructors</button>
+                </div>
+                <input type="hidden" name="role" id="role-input" value="{{ selected_role|default:'student' }}">
+                <div class="peer-search-row">
+                    <input 
+                        type="text" 
+                        name="q" 
+                        class="peer-search-input"
+                        placeholder="Search by username (e.g., 'Cjade')..." 
+                        value="{{ query }}"
+                        autocomplete="off"
+                    >
+                    <button type="submit" class="peer-search-btn">Search</button>
+                </div>
             </form>
         </div>
 
-        <!-- Students Currently Online - visible at all times -->
+        <!-- Students Currently Online/Instructor section - visible at all times -->
         <div class="online-section">
-            <h3 style="color: var(--text-on-dark); margin-bottom: 1rem; font-size: 1.15rem;">🌐 Students Currently Online</h3>
-            {% if online_students %}
-                <div class="online-list">
-                    {% for presence in online_students %}
-                        {% if presence.student != request.user %}  {# skip yourself #}
-                        <div class="online-item">
-                            <span class="status-dot status-online"></span>
-                            <div class="online-info">
-                                <div class="online-name">{{ presence.student.username }}</div>
-                                {% if presence.current_room %}
-                                    <small style="color: var(--text-muted);">in {{ presence.current_room.name }}</small>
-                                {% endif %}
+            <h3 id="online-title" style="color: var(--text-on-dark); margin-bottom: 1rem; font-size: 1.15rem;">🌐 {{ online_title }}</h3>
+            <div id="online-content">
+                {% if online_students %}
+                    <div class="online-list" id="online-list">
+                        {% for presence in online_students %}
+                            {% if presence.user != request.user %}  {# skip yourself #}
+                            <div class="online-item">
+                                <span class="status-dot status-online"></span>
+                                <div class="online-info">
+                                    <div class="online-name">{{ presence.user.username }}</div>
+                                    {% if presence.current_room %}
+                                        <small style="color: var(--text-muted);">in {{ presence.current_room.name }}</small>
+                                    {% endif %}
+                                </div>
                             </div>
-                        </div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p style="color: var(--text-muted);">No students are currently online.</p>
-            {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="color: var(--text-muted);">No {{ selected_role|title }}s are currently online.</p>
+                {% endif %}
+            </div>
         </div>
 
-    {% if query %}
-        <div class="results">
-            {# Custom/friends-only results #}
-            {% if custom_results %}
-                <h3 style="margin-bottom: 0.5rem; color: var(--text-on-dark);">Allowed peers (added you)</h3>
-                <div class="result-group">
-                    {% for presence in custom_results %}
-                        {% include 'search_result_item.html' with presence=presence %}
-                    {% endfor %}
-                </div>
-            {% endif %}
+        <div id="peer-search-results">
+        {% if query %}
+            <div class="results">
+                {# Custom/friends-only results #}
+                {% if custom_results %}
+                    <h3 style="margin-bottom: 0.5rem; color: var(--text-on-dark);">Allowed peers (added you)</h3>
+                    <div class="result-group">
+                        {% for presence in custom_results %}
+                            {% include 'search_result_item.html' with presence=presence %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-            {# Public results #}
-            {% if public_results %}
-                <h3 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-on-dark);">Everyone else</h3>
-                <div class="result-group">
-                    {% for presence in public_results %}
-                        {% include 'search_result_item.html' with presence=presence %}
-                    {% endfor %}
-                </div>
-            {% endif %}
+                {# Public results #}
+                {% if public_results %}
+                    <h3 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-on-dark);">Everyone else</h3>
+                    <div class="result-group">
+                        {% for presence in public_results %}
+                            {% include 'search_result_item.html' with presence=presence %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-            {% if not custom_results and not public_results %}
-                <div class="alert alert-info">
-                    No students found matching "{{ query }}". Please try a different search term.
-                </div>
-            {% endif %}
+                {% if not custom_results and not public_results %}
+                    <div class="alert alert-info">
+                        No {{ selected_role }}s found matching "{{ query }}". Please try a different search term.
+                    </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <div style="text-align: center; margin-top: 2rem;">
+                <p style="color: var(--text-muted); font-size: 1.1rem;">Enter a username above to find your classmates.</p>
+            </div>
+        {% endif %}
         </div>
-    {% else %}
-        <div style="text-align: center; margin-top: 2rem;">
-            <p style="color: var(--text-muted); font-size: 1.1rem;">Enter a username above to find your classmates.</p>
-        </div>
-    {% endif %}
 
         <!-- Location Privacy Section -->
         <div class="privacy-card">
@@ -95,26 +112,31 @@
         <!-- How It Works Section -->
         <!-- anchor target for smooth scroll from top link -->
         <div class="info-section" id="how-it-works">
-            <h2>How It Works</h2>
+            <h2 class="how-title">How It Works</h2>
             
             <div class="info-grid grid-steps">
-                <div class="info-card">
+                <div class="info-card how-card">
+                    <div class="step-watermark" aria-hidden="true">1</div>
                     <h3>Select your location</h3>
                     <p>Select your current room or laboratory from the dropdown on the dashboard.</p>
                 </div>
-                <div class="info-card">
+                <div class="info-card how-card">
+                    <div class="step-watermark" aria-hidden="true">2</div>
                     <h3>Click "Enter Room"</h3>
                     <p>Log your presence into the system.</p>
                 </div>
-                <div class="info-card">
+                <div class="info-card how-card">
+                    <div class="step-watermark" aria-hidden="true">3</div>
                     <h3>Be discoverable</h3>
                     <p>Your location will be visible to classmates searching for you (based on your privacy settings).</p>
                 </div>
-                <div class="info-card">
+                <div class="info-card how-card">
+                    <div class="step-watermark" aria-hidden="true">4</div>
                     <h3>Auto-update status</h3>
                     <p>Your status automatically updates to "Offline" if you disconnect from University Wi-Fi.</p>
                 </div>
-                <div class="info-card">
+                <div class="info-card how-card is-full">
+                    <div class="step-watermark" aria-hidden="true">5</div>
                     <h3>Exit when done</h3>
                     <p>Click "Exit Room" when you leave the location.</p>
                 </div>
@@ -123,6 +145,400 @@
         </div>
     </div>
 
+    <style>
+        /* ===== Find Peers: Visual refresh (no functionality changes) ===== */
+        .learn-badge-row {
+            margin-top: 0.5rem;
+        }
+
+        .learn-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(26,188,156,0.12);
+            border: 0.5px solid rgba(26,188,156,0.3);
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 12px;
+            color: #1abc9c;
+            text-decoration: none;
+        }
+
+        .learn-badge:hover {
+            background: rgba(26,188,156,0.16);
+            border-color: rgba(26,188,156,0.38);
+        }
+
+        .learn-badge-arrow {
+            font-size: 12px;
+            line-height: 1;
+            opacity: 0.9;
+        }
+
+        /* iOS segmented control toggle */
+        .peer-role-toggle {
+            display: inline-flex;
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 3px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .peer-role-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            height: calc(100% - 6px);
+            background: rgba(255,255,255,0.18);
+            border-radius: 16px;
+            z-index: 0;
+        }
+
+        .peer-toggle-btn {
+            position: relative;
+            z-index: 1;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.4);
+            border-radius: 16px;
+            padding: 6px 22px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .peer-toggle-btn.is-active {
+            color: #fff;
+        }
+
+        /* Search input + button */
+        .peer-search-row {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+
+        .peer-search-input {
+            flex: 1;
+            border-radius: 14px;
+            background: rgba(255,255,255,0.06);
+            border: 0.5px solid rgba(255,255,255,0.1);
+            padding: 12px 16px;
+            font-size: 14px;
+            color: #fff;
+            outline: none;
+        }
+
+        .peer-search-input::placeholder {
+            color: rgba(255,255,255,0.35);
+        }
+
+        .peer-search-input:focus {
+            box-shadow: 0 0 0 3px rgba(99,179,255,0.2);
+            border-color: rgba(99,179,255,0.35);
+        }
+
+        .peer-search-btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 24px;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #1abc9c, #0e9b7e);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .peer-search-btn:hover {
+            filter: none;
+        }
+
+        @media (max-width: 520px) {
+            .peer-search-row {
+                flex-direction: column;
+            }
+
+            .peer-search-btn {
+                width: 100%;
+            }
+        }
+
+        /* How It Works upgrades (scoped to this page) */
+        #how-it-works .how-title {
+            background: none;
+            -webkit-background-clip: initial;
+            background-clip: initial;
+            -webkit-text-fill-color: #d400ff;
+            color: #d400ff;
+            border-bottom: 2px solid currentColor;
+            padding-bottom: 4px;
+            display: inline-block;
+            margin-bottom: 18px;
+        }
+
+        #how-it-works .grid-steps {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        #how-it-works .how-card {
+            background: rgba(255,255,255,0.04);
+            border: 0.5px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #how-it-works .how-card:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        #how-it-works .how-card.is-full {
+            grid-column: 1 / -1;
+        }
+
+        #how-it-works .step-watermark {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            font-size: 28px;
+            font-weight: 800;
+            opacity: 0.15;
+            color: #fff;
+            pointer-events: none;
+        }
+
+        /* Remove legacy grid-step counters + accent bar to match new layout */
+        #how-it-works .grid-steps .info-card h3::before,
+        #how-it-works .info-card h3::after {
+            content: none !important;
+        }
+
+        #how-it-works .how-card h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+            padding-left: 0;
+        }
+
+        #how-it-works .how-card p {
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+            line-height: 1.5;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            #how-it-works .grid-steps {
+                grid-template-columns: 1fr;
+            }
+
+            #how-it-works .how-card.is-full {
+                grid-column: auto;
+            }
+        }
+    </style>
+
+    <script>
+    let selectedRole = '{{ selected_role|default:'student' }}';
+
+    function selectRole(role) {
+      selectedRole = role;
+      const slider = document.getElementById('toggle-slider');
+      const btnS = document.getElementById('btn-students');
+      const btnI = document.getElementById('btn-instructors');
+      const roleInput = document.getElementById('role-input');
+      if (!slider || !btnS || !btnI || !roleInput) return;
+
+      if (role === 'student') {
+        slider.style.left = '3px';
+        slider.style.width = btnS.offsetWidth + 'px';
+        btnS.classList.add('is-active');
+        btnI.classList.remove('is-active');
+        roleInput.value = 'student';
+      } else {
+        slider.style.left = (btnS.offsetWidth + 3) + 'px';
+        slider.style.width = btnI.offsetWidth + 'px';
+        btnS.classList.remove('is-active');
+        btnI.classList.add('is-active');
+        roleInput.value = 'instructor';
+      }
+    }
+
+    window.addEventListener('load', () => {
+      const slider = document.getElementById('toggle-slider');
+      const btnS = document.getElementById('btn-students');
+      const roleInput = document.getElementById('role-input');
+      if (!slider || !btnS || !roleInput) return;
+
+      selectedRole = roleInput.value || 'student';
+      selectRole(selectedRole);
+    });
+
+    window.addEventListener('resize', () => {
+      selectRole(selectedRole);
+    });
+
+    document.getElementById('presence-search-form')?.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const form = this;
+      const roleInput = document.getElementById('role-input');
+      if (roleInput) roleInput.value = selectedRole;
+
+      const queryInput = form.querySelector('input[name="q"]');
+      const query = queryInput ? queryInput.value.trim() : '';
+      const url = `/search/?q=${encodeURIComponent(query)}&role=${encodeURIComponent(selectedRole)}`;
+
+      const resultsContainer = document.getElementById('peer-search-results');
+      const onlineTitle = document.getElementById('online-title');
+      const onlineContent = document.getElementById('online-content');
+      if (!resultsContainer || !onlineTitle || !onlineContent) {
+        form.submit();
+        return;
+      }
+
+      function escapeHTML(str) {
+        return (str || '').replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/\"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            const msg = (data && data.message) ? data.message : 'Search failed.';
+            createToast('error', 'Error', msg);
+            return;
+          }
+
+          const role = data.selected_role || selectedRole;
+          const pluralRole = role === 'instructor' ? 'instructors' : 'students';
+
+          // Update always-visible online section
+          onlineTitle.textContent = `🌐 ${data.online_title || ''}`;
+          const online = data.online_students || [];
+          if (online.length) {
+            onlineContent.innerHTML = `
+              <div class="online-list" id="online-list">
+                ${online.map(item => {
+                  const uname = escapeHTML(item.username || '');
+                  const room = item.room_name ? `<small style="color: var(--text-muted);">in ${escapeHTML(item.room_name)}</small>` : '';
+                  return `
+                    <div class="online-item">
+                      <span class="status-dot status-online"></span>
+                      <div class="online-info">
+                        <div class="online-name">${uname}</div>
+                        ${room}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `;
+          } else {
+            onlineContent.innerHTML = `<p style="color: var(--text-muted);">No ${pluralRole} are currently online.</p>`;
+          }
+
+          // Update results section
+          const publicResults = data.public_results || [];
+          const customResults = data.custom_results || [];
+
+          if (!query) {
+            resultsContainer.innerHTML = `
+              <div style="text-align: center; margin-top: 2rem;">
+                <p style="color: var(--text-muted); font-size: 1.1rem;">Enter a username above to find your classmates.</p>
+              </div>
+            `;
+            return;
+          }
+
+          function resultItemHTML(p) {
+            const username = escapeHTML(p.username || '');
+            const fullName = escapeHTML(p.full_name || p.username || '');
+            const idNum = escapeHTML(p.student_id_number || '-');
+            const phone = escapeHTML(p.phone_number || '-');
+            const photo = p.profile_picture_url
+              ? `<img src="${escapeHTML(p.profile_picture_url)}" alt="${username}">`
+              : `<div class="peer-photo-fallback">${escapeHTML((p.username || '').slice(0,1).toUpperCase())}</div>`;
+            const status = p.is_online ? `<span class="status-badge status-online">ONLINE</span>` : `<span class="status-badge status-offline">OFFLINE</span>`;
+            const room = p.room_name ? `
+              <div class="peer-location">
+                <span class="room-info">
+                  <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" width="16" height="16" fill="currentColor">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/>
+                  </svg>
+                  ${escapeHTML(p.room_name)}
+                </span>
+              </div>
+            ` : '';
+
+            return `
+              <div class="result-item">
+                <div class="peer-grid">
+                  <div class="peer-photo">${photo}</div>
+                  <div class="peer-field">
+                    <span class="peer-label">Full Name</span>
+                    <span class="peer-value">${fullName}</span>
+                  </div>
+                  <div class="peer-field">
+                    <span class="peer-label">Student ID</span>
+                    <span class="peer-value">${idNum}</span>
+                  </div>
+                  <div class="peer-field">
+                    <span class="peer-label">Phone Number</span>
+                    <span class="peer-value">${phone}</span>
+                  </div>
+                </div>
+                <div class="peer-meta">
+                  ${status}
+                  ${room}
+                </div>
+              </div>
+            `;
+          }
+
+          let html = '<div class="results">';
+          if (customResults.length) {
+            html += `
+              <h3 style="margin-bottom: 0.5rem; color: var(--text-on-dark);">Allowed peers (added you)</h3>
+              <div class="result-group">
+                ${customResults.map(resultItemHTML).join('')}
+              </div>
+            `;
+          }
+          if (publicResults.length) {
+            html += `
+              <h3 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--text-on-dark);">Everyone else</h3>
+              <div class="result-group">
+                ${publicResults.map(resultItemHTML).join('')}
+              </div>
+            `;
+          }
+          if (!customResults.length && !publicResults.length) {
+            html += `
+              <div class="alert alert-info">
+                No ${pluralRole} found matching "${escapeHTML(query)}". Please try a different search term.
+              </div>
+            `;
+          }
+          html += '</div>';
+          resultsContainer.innerHTML = html;
+        })
+        .catch(err => {
+          createToast('error', 'Error', err.message || 'Search failed.');
+          form.submit();
+        });
+    });
+
+    </script>
 
 </div>
 {% endblock %}

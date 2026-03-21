@@ -35,6 +35,7 @@
         </div>
     {% endif %}
 
+    <div id="dashboard-signedin-summary">
     {% if current_presence and has_active_signin %}
         <div class="dark-bg-container">
             <h3>✓ Currently Signed In</h3>
@@ -55,6 +56,7 @@
             </p>
         </div>
     {% endif %}
+    </div>
 
     <div class="grid" style="grid-template-columns: 1fr;">
             <div class="card">
@@ -66,7 +68,7 @@
             </h3>
             <p style="margin-bottom: 1.5rem;">Choose the location where you currently are:</p>
             
-            <form method="POST" action="/signin/">
+            <form method="POST" action="/signin/" id="dashboard-signin-form">
                 {% csrf_token %}
                 
                 {% if not rooms %}
@@ -89,7 +91,7 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-success" style="width: 100%; padding: 1rem;">
+                    <button type="submit" class="btn btn-success" style="width: 100%; padding: 1rem;" id="dashboard-signin-btn">
                         <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         Enter Room
                     </button>
@@ -97,26 +99,24 @@
             </form>
         </div>
 
-        {% if current_presence %}
-                <div class="card">
-                <h3>
-                    <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                        <path d="M3 12h18M12 3v18" stroke-linecap="round" stroke-linejoin="round"/>
+        <div class="card" id="dashboard-signout-card" style="{% if not has_active_signin %}display:none;{% endif %}">
+            <h3>
+                <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                    <path d="M3 12h18M12 3v18" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Exit Room
+            </h3>
+            <p style="margin-bottom: 1.5rem;">Leave your current location and mark yourself as offline.</p>
+            <form method="POST" action="/signout/" id="dashboard-signout-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger" style="width: 100%; padding: 1rem;" id="dashboard-signout-btn">
+                    <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                        <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     Exit Room
-                </h3>
-                <p style="margin-bottom: 1.5rem;">Leave your current location and mark yourself as offline.</p>
-                <form method="POST" action="/signout/">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger" style="width: 100%; padding: 1rem;">
-                        <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                            <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        Exit Room
-                    </button>
-                </form>
-            </div>
-        {% endif %}
+                </button>
+            </form>
+        </div>
     </div>
 
     <div style="margin-top: 3rem; padding: 1.5rem; background: var(--bg-muted); border-radius: 5px;">
@@ -135,4 +135,107 @@
         </ul>
     </div>
 </div>
+
+<script>
+(function(){
+  function escapeHTML(str) {
+    return (str || '').replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function renderSignedInSummary(roomName) {
+    const wrap = document.getElementById('dashboard-signedin-summary');
+    if (!wrap) return;
+
+    const now = new Date();
+    const signedAt = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const currentTime = now.toLocaleString([], { weekday: 'long', year: 'numeric', month: 'long', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+    wrap.innerHTML = `
+      <div class="dark-bg-container">
+        <h3>✓ Currently Signed In</h3>
+        <p class="dark-status">
+          <strong>Room:</strong> ${escapeHTML(roomName || 'Outside department')}<br>
+          <strong>Signed in at:</strong> ${escapeHTML(signedAt)}<br>
+          <strong>Time:</strong> ${escapeHTML(currentTime)} (GMT+8)<br>
+          <strong>Status:</strong> <span class="status-badge status-online">ONLINE</span>
+        </p>
+      </div>
+    `;
+  }
+
+  function clearSignedInSummary() {
+    const wrap = document.getElementById('dashboard-signedin-summary');
+    if (wrap) wrap.innerHTML = '';
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const signinForm = document.getElementById('dashboard-signin-form');
+    const signoutForm = document.getElementById('dashboard-signout-form');
+    const signoutCard = document.getElementById('dashboard-signout-card');
+    const roomSelect = document.getElementById('room_select');
+
+    if (signinForm) {
+      signinForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        const roomId = roomSelect ? roomSelect.value : '';
+        if (!roomId) {
+          createToast('error', 'Error', 'Please select a room.');
+          return;
+        }
+
+        fetch(signinForm.action, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ room_id: roomId })
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            createToast('error', 'Error', data.message || 'Could not sign in.');
+            return;
+          }
+          createToast('success', 'Done', data.message || 'Signed in.');
+          if (signoutCard) signoutCard.style.display = '';
+          renderSignedInSummary(data.room && data.room.name ? data.room.name : '');
+        })
+        .catch(err => createToast('error', 'Error', err.message || 'Could not sign in.'));
+      });
+    }
+
+    if (signoutForm) {
+      signoutForm.addEventListener('submit', function(e){
+        e.preventDefault();
+        fetch(signoutForm.action, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken(),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({})
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            createToast('error', 'Error', data.message || 'Could not sign out.');
+            return;
+          }
+          createToast('success', 'Done', data.message || 'Signed out.');
+          if (signoutCard) signoutCard.style.display = 'none';
+          clearSignedInSummary();
+        })
+        .catch(err => createToast('error', 'Error', err.message || 'Could not sign out.'));
+      });
+    }
+  });
+})();
+</script>
 {% endblock %}
