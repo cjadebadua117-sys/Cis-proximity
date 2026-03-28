@@ -332,7 +332,7 @@
             <div class="avatar-ring" id="avatar-trigger" {% if is_own_profile %}title="Click to change photo"{% endif %}>
                 <img
                     id="profile-avatar"
-                    src="{% if profile.profile_picture %}{{ profile.profile_picture.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}"
+                    src="{% if profile and profile.profile_picture %}{{ profile.profile_picture.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}"
                     alt="Profile"
                 >
                 {% if is_own_profile %}<span class="avatar-hint">Change Photo</span>{% endif %}
@@ -359,15 +359,15 @@
                 </div>
                 <div class="data-cell">
                     <label>{% if is_instructor %}Instructor ID{% else %}Student ID{% endif %}</label>
-                    <p id="profile-display-student-id">{{ profile.student_id_number|default:"Pending" }}</p>
+                    <p id="profile-display-student-id">{% if profile %}{{ profile.student_id_number|default:"Pending" }}{% else %}N/A{% endif %}</p>
                 </div>
                 <div class="data-cell">
                     <label>Phone Number</label>
-                    <p id="profile-display-phone">{{ profile.phone_number|default:"Not Provided" }}</p>
+                    <p id="profile-display-phone">{% if profile %}{{ profile.phone_number|default:"Not Provided" }}{% else %}Not Provided{% endif %}</p>
                 </div>
                 <div class="data-cell" style="grid-column: 1 / -1;">
                     <label>Bio</label>
-                    <p id="profile-display-bio">{{ profile.bio|default:"No bio yet." }}</p>
+                    <p id="profile-display-bio">{% if profile %}{{ profile.bio|default:"No bio yet." }}{% else %}No bio yet.{% endif %}</p>
                 </div>
                 <div class="data-cell">
                     <label>Member Since</label>
@@ -375,7 +375,7 @@
                 </div>
             </div>
 
-            {% if is_own_profile %}
+            {% if is_own_profile and profile %}
             <form id="profile-edit-form" method="post" action="" class="hidden">
                 {% csrf_token %}
                 <div class="info-grid-premium">
@@ -415,6 +415,14 @@
             <div class="btn-row">
                 <button type="button" id="edit-profile-btn" class="btn-action-premium">Edit Profile</button>
                 <button type="button" id="cancel-edit-btn" class="btn-action-premium secondary hidden">Cancel</button>
+                
+                <!-- ADMIN-ONLY ACTIONS -->
+                {% if user.is_staff or user.is_superuser %}
+                    {% if is_own_profile %}
+                        <button type="button" class="btn-action-premium secondary" onclick="clearProfilePicture()" style="background: #dc2626; color: white;">Clear Profile Picture</button>
+                        <button type="button" class="btn-action-premium secondary" onclick="clearBio()" style="background: #dc2626; color: white;">Clear Bio</button>
+                    {% endif %}
+                {% endif %}
             </div>
             {% endif %}
 
@@ -749,6 +757,56 @@
             });
         }, 'image/jpeg', 0.92);
     });
+
+    // ADMIN-ONLY FUNCTIONS
+    function clearProfilePicture() {
+        if (!confirm('Are you sure you want to remove your profile picture?')) return;
+        
+        fetch(window.location.pathname, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ clear_profile_picture: true })
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) {
+                createToast('error', 'Error', 'Could not clear profile picture.');
+                return;
+            }
+            createToast('success', 'Done', 'Profile picture cleared.');
+            location.reload();
+        })
+        .catch(error => createToast('error', 'Error', error.message));
+    }
+
+    function clearBio() {
+        if (!confirm('Are you sure you want to clear your bio?')) return;
+        
+        fetch(window.location.pathname, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ clear_bio: true })
+        })
+        .then(res => res.json().then(data => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) {
+                createToast('error', 'Error', 'Could not clear bio.');
+                return;
+            }
+            createToast('success', 'Done', 'Bio cleared.');
+            const bioEl = document.getElementById('profile-display-bio');
+            if (bioEl) bioEl.textContent = 'No bio yet.';
+        })
+        .catch(error => createToast('error', 'Error', error.message));
+    }
 })();
 </script>
 {% endif %}

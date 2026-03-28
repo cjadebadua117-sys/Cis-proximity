@@ -26,6 +26,15 @@ urlpatterns = [
     path('instructor/frc/mark/<int:student_id>/', views.instructor_mark_frc, name='instructor_mark_frc'),
     path('instructor/signout/manage/', views.instructor_manage_signout, name='instructor_manage_signout'),
     path('instructor/signout/adjust/<int:activity_id>/', views.instructor_adjust_signout, name='instructor_adjust_signout'),
+    # Instructor Admin Panel - Manage Students & Rooms
+    path('instructor/admin/', views.instructor_admin, name='instructor_admin'),
+    path('instructor/admin/student/<int:student_id>/', views.instructor_admin_student_detail, name='instructor_admin_student_detail'),
+    # Admin System Dashboard (SUPERUSER ONLY)
+    path('admin-dashboard/', views.admin_system_dashboard, name='admin_system_dashboard'),
+    # Admin User Management (SUPERUSER ONLY)
+    path('admin-users/', views.admin_user_management, name='admin_user_management'),
+    # Instructor Account Management (ADMIN ONLY - SEPARATE FROM DJANGO ADMIN)
+    path('manage-instructors/', views.admin_instructor_management, name='admin_instructor_management'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('signin/', views.sign_in, name='sign_in_post'),
     path('signin/<int:room_id>/', views.sign_in, name='sign_in'),

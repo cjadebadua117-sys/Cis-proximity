@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+{% load utils_tags %}
+
+{% block title %}User Management | System Admin | CIS-Prox{% endblock %}
+
+{% block content %}
+<style>
+    .admin-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .admin-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #334155;
+    }
+
+    .admin-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #e5edf8;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .admin-subtitle {
+        color: #94a3b8;
+        font-size: 0.95rem;
+    }
+
+    .tabs-container {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #334155;
+    }
+
+    .tab-button {
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .tab-button.active {
+        border-bottom-color: #ef4444;
+        color: #e5edf8;
+    }
+
+    .tab-button:hover {
+        color: #cbd5e1;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .user-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .user-info {
+        flex: 1;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: #e5edf8;
+        margin-bottom: 0.25rem;
+        font-size: 1.1rem;
+    }
+
+    .user-email {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .user-meta {
+        color: #64748b;
+        font-size: 0.85rem;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-danger {
+        padding: 0.6rem 1.2rem;
+        background: #ef4444;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+
+    .btn-clear {
+        padding: 0.6rem 1.2rem;
+        background: #f59e0b;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+    }
+
+    .btn-clear:hover {
+        background: #d97706;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+
+    .user-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .stat-banner {
+        background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+        border: 1px solid #475569;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        color: #e5edf8;
+    }
+
+    .stat-banner strong {
+        color: #60a5fa;
+    }
+</style>
+
+<div class="admin-container">
+    <div class="admin-header">
+        <h1 class="admin-title">👥 User Management</h1>
+        <p class="admin-subtitle">Manage all system users - delete accounts and clear profile data (SUPERUSER ONLY)</p>
+    </div>
+
+    <div class="stat-banner">
+        📊 <strong>{{ total_users }}</strong> total users in system (Admin: <strong>{{ total_admin_count }}</strong>, Instructors: <strong>{{ total_instructor_count }}</strong>, Students: <strong>{{ total_student_count }}</strong>)
+    </div>
+
+    <div class="tabs-container">
+        <button class="tab-button active" onclick="switchTab('admin')">Admin/Superusers ({{ total_admin_count }})</button>
+        <button class="tab-button" onclick="switchTab('instructors')">Instructors ({{ total_instructor_count }})</button>
+        <button class="tab-button" onclick="switchTab('students')">Students ({{ total_student_count }})</button>
+    </div>
+
+    <!-- Admin/Superusers Tab -->
+    <div id="admin" class="tab-content active">
+        {% if admin_users %}
+            <div class="user-list">
+                {% for user in admin_users %}
+                    <div class="user-card">
+                        <div class="user-info">
+                            <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                            <div class="user-email">📧 {{ user.email|default:"No email" }}</div>
+                            <div class="user-meta">
+                                🔐 Superuser/Admin | Joined: {{ user.date_joined|date:"M d, Y" }}
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <form method="POST" style="display: inline;" onsubmit="return confirm('Clear all profile data for this admin? Their profile picture and bio will be deleted.');">
+                                {% csrf_token %}
+                                <input type="hidden" name="clear_user_data_id" value="{{ user.id }}">
+                                <button type="submit" class="btn-clear">Clear Data</button>
+                            </form>
+                            <form method="POST" style="display: inline;" onsubmit="return confirm('Are you absolutely sure? This will delete the entire admin account for {{ user.username }}. This cannot be undone.');">
+                                {% csrf_token %}
+                                <input type="hidden" name="delete_user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn-danger">Delete Account</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <div>No admin/superuser accounts found (excluding your current account).</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Instructors Tab -->
+    <div id="instructors" class="tab-content">
+        {% if instructor_users %}
+            <div class="user-list">
+                {% for user in instructor_users %}
+                    <div class="user-card">
+                        <div class="user-info">
+                            <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                            <div class="user-email">📧 {{ user.email|default:"No email" }}</div>
+                            <div class="user-meta">
+                                {% if user.is_staff %}
+                                    👮 Staff Instructor
+                                {% else %}
+                                    👤 Instructor
+                                {% endif %}
+                                | Joined: {{ user.date_joined|date:"M d, Y" }}
+                            </div>
+                        </div>
+                        <div class="action-buttons">
+                            <form method="POST" style="display: inline;" onsubmit="return confirm('Clear all profile data for this instructor? Their profile picture and bio will be deleted.');">
+                                {% csrf_token %}
+                                <input type="hidden" name="clear_user_data_id" value="{{ user.id }}">
+                                <button type="submit" class="btn-clear">Clear Data</button>
+                            </form>
+                            <form method="POST" style="display: inline;" onsubmit="return confirm('Are you absolutely sure? This will delete the entire instructor account for {{ user.username }}. This cannot be undone.');">
+                                {% csrf_token %}
+                                <input type="hidden" name="delete_user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn-danger">Delete Account</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <div>No instructor accounts found.</div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Students Tab -->
+    <div id="students" class="tab-content">
+        {% if student_users %}
+            <div class="user-list">
+                {% for user in student_users %}
+                    <div class="user-card" style="display: grid; grid-template-columns: auto 1fr; gap: 1.5rem; align-items: start;">
+                        <!-- Profile Picture Section -->
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            {% if user.profile.profile_picture %}
+                                <img src="{{ user.profile.profile_picture.url }}" alt="{{ user.username }}" style="width: 120px; height: 120px; border-radius: 8px; object-fit: cover; border: 2px solid #334155;">
+                            {% else %}
+                                <div style="width: 120px; height: 120px; background: #1e293b; border: 2px solid #334155; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 2rem;">👤</div>
+                            {% endif %}
+                            
+                            <!-- Upload Photo Form -->
+                            <form method="POST" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                {% csrf_token %}
+                                <input type="hidden" name="upload_photo_user_id" value="{{ user.id }}">
+                                <input type="file" name="profile_picture" accept="image/*" style="display: none;" id="file-input-{{ user.id }}">
+                                <button type="button" class="btn-clear" style="width: 100%; font-size: 0.8rem; cursor: pointer;" onclick="document.getElementById('file-input-{{ user.id }}').click();">
+                                    📸 Upload Photo
+                                </button>
+                                <input type="hidden" id="file-btn-{{ user.id }}" type="submit">
+                                <script>
+                                    document.getElementById('file-input-{{ user.id }}').addEventListener('change', function() {
+                                        if (this.files && this.files[0]) {
+                                            document.getElementById('file-btn-{{ user.id }}').click();
+                                        }
+                                    });
+                                </script>
+                            </form>
+                            
+                            <!-- Delete Photo Form -->
+                            <form method="POST" style="display: inline;" onsubmit="return confirm('Delete the profile picture for {{ user.username }}?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="delete_photo_user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn-clear" style="width: 100%; font-size: 0.8rem; background: #ef4444;">🗑️ Delete Photo</button>
+                            </form>
+                        </div>
+                        
+                        <!-- User Info Section -->
+                        <div style="display: flex; flex-direction: column; justify-content: space-between; height: 100%;">
+                            <div class="user-info">
+                                <div class="user-name">{{ user.get_full_name|default:user.username }}</div>
+                                <div class="user-email">📧 {{ user.email|default:"No email" }}</div>
+                                <div class="user-meta">
+                                    👤 Student | Joined: {{ user.date_joined|date:"M d, Y" }}
+                                </div>
+                                {% if user.profile.bio %}
+                                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #334155;">
+                                        <div style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.25rem;">📝 Bio:</div>
+                                        <div style="color: #cbd5e1; font-size: 0.9rem;">{{ user.profile.bio|truncatewords:20 }}</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="action-buttons" style="margin-top: 1rem;">
+                                <form method="POST" style="display: inline;" onsubmit="return confirm('Are you absolutely sure? This will delete the entire account for {{ user.username }}. This cannot be undone.');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="delete_user_id" value="{{ user.id }}">
+                                    <button type="submit" class="btn-danger">Delete Account</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <div>No student accounts found.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    function switchTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        document.getElementById(tabName).classList.add('active');
+
+        // Add active class to clicked button
+        event.target.classList.add('active');
+    }
+</script>
+{% endblock %}

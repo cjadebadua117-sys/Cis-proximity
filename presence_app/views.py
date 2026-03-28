@@ -63,14 +63,9 @@ class InstructorRegistrationForm(UserCreationForm):
         self.fields['section'].queryset = Section.objects.all().order_by('year', 'section')  # type: ignore
 
 
-class UnifiedRegistrationForm(UserCreationForm):
-    """Unified registration form that can register both students and instructors."""
+class StudentRegistrationOnlyForm(UserCreationForm):
+    """Registration form for STUDENTS ONLY. Instructors must be created by admins."""
     email = forms.EmailField(required=True)
-    user_type = forms.ChoiceField(
-        choices=[('student', 'Student'), ('instructor', 'Instructor')],
-        widget=forms.RadioSelect,
-        label="Account Type"
-    )
     student_id_number = forms.CharField(
         max_length=12,
         required=False,
@@ -80,7 +75,7 @@ class UnifiedRegistrationForm(UserCreationForm):
 
     class Meta:
         model = User
-        fields = ('username', 'email', 'user_type', 'password1', 'password2')
+        fields = ('username', 'email', 'password1', 'password2')
 
     def clean_username(self):
         # normalize username to lowercase and strip whitespace; avoid
@@ -90,6 +85,11 @@ class UnifiedRegistrationForm(UserCreationForm):
         if User.objects.filter(username__iexact=username).exists():
             raise forms.ValidationError('A user with that username already exists.')
         return username
+
+
+class UnifiedRegistrationForm(StudentRegistrationOnlyForm):
+    """Legacy compatibility: now same as StudentRegistrationOnlyForm"""
+    pass
 
 
 class EnrollmentForm(forms.Form):
@@ -140,35 +140,48 @@ def home(request):
     }
     
     if request.user.is_authenticated:
-        # Check if user is an instructor
-        try:
-            instructor_profile = request.user.instructor_profile
+        # Check if user is staff/superuser first
+        if request.user.is_staff or request.user.is_superuser:
             context['is_instructor'] = True
-            context['instructor_profile'] = instructor_profile
-            
-            # Get instructor's section and student count
-            section = instructor_profile.section
-            student_count = StudentPresence.objects.filter(section=section).count()
-            # compute how many of those students are currently signed into some room
-            live_count = StudentPresence.objects.filter(section=section, current_room__isnull=False, is_online=True).count()
-            context['section'] = section
-            context['student_count'] = student_count
-            context['live_count'] = live_count
-        except InstructorProfile.DoesNotExist:
-            # User is a student
-            context['is_student'] = True
+            context['instructor_profile'] = None
+            context['section'] = None
+            context['student_count'] = 0
+            context['live_count'] = 0
+        else:
+            # Check if user is an instructor
             try:
-                student_presence = request.user.studentpresence
-                context['student_presence'] = student_presence
-                context['section'] = student_presence.section
-            except StudentPresence.DoesNotExist:
-                context['needs_enrollment'] = True
+                instructor_profile = request.user.instructor_profile
+                context['is_instructor'] = True
+                context['instructor_profile'] = instructor_profile
+                
+                # Get instructor's section and student count
+                section = instructor_profile.section
+                student_count = StudentPresence.objects.filter(section=section).count()
+                # compute how many of those students are currently signed into some room
+                live_count = StudentPresence.objects.filter(section=section, current_room__isnull=False, is_online=True).count()
+                context['section'] = section
+                context['student_count'] = student_count
+                context['live_count'] = live_count
+            except InstructorProfile.DoesNotExist:
+                # User is a student
+                context['is_student'] = True
+                try:
+                    student_presence = request.user.studentpresence
+                    context['student_presence'] = student_presence
+                    context['section'] = student_presence.section
+                except StudentPresence.DoesNotExist:
+                    context['needs_enrollment'] = True
     
     return render(request, 'home.html', context)
 
 
 def register(request):
-    """Handle user registration via a single unified form."""
+    """
+    Handle user registration for STUDENTS ONLY.
+    
+    SECURITY NOTE: Instructor accounts can ONLY be created by Django administrators.
+    This prevents unauthorized users from gaining instructor privileges.
+    """
     # Clear any flash messages that may have been set by other views (e.g. the
     # logout view).  Without this, the "logged out successfully" message would
     # still show up on the registration page after clicking the "Register" link
@@ -179,31 +192,20 @@ def register(request):
     if request.user.is_authenticated:
         return redirect('home')
 
-    user_type = request.POST.get('user_type') or request.GET.get('type') or 'student'
-
     if request.method == 'POST':
         post_data = request.POST.copy()
-        # No longer mirroring password1 to password2 since we have a confirm password field
-
-        if 'user_type' not in post_data:
-            post_data['user_type'] = 'instructor' if user_type == 'instructor' else 'student'
-
-        form = UnifiedRegistrationForm(post_data)
+        form = StudentRegistrationOnlyForm(post_data)
+        
         if form.is_valid():
             user = form.save()
-            user_type_value = form.cleaned_data.get('user_type')
-
-            if user_type_value == 'instructor':
-                InstructorProfile.objects.create(user=user, section=None)
-                messages.success(request, 'Instructor account created successfully!')
-            else:
-                student_id_number = form.cleaned_data.get('student_id_number', '').strip()
-                if student_id_number:
-                    user.profile.student_id_number = student_id_number
-                    user.profile.save()
-                messages.success(request, 'Student account created successfully!')
-
-            # Log in the user immediately and send them to the home page (features overview)
+            student_id_number = form.cleaned_data.get('student_id_number', '').strip()
+            
+            # Create student profile with student ID if provided
+            if student_id_number:
+                user.profile.student_id_number = student_id_number
+                user.profile.save()
+            
+            messages.success(request, '✓ Student account created successfully! You can now log in.')
             login(request, user)
             return redirect('home')
 
@@ -211,13 +213,11 @@ def register(request):
             for error in errors:
                 messages.error(request, f'{field}: {error}')
     else:
-        form = UnifiedRegistrationForm(initial={'user_type': 'instructor' if user_type == 'instructor' else 'student'})
+        form = StudentRegistrationOnlyForm()
 
     return render(request, 'register.html', {
         'form': form,
-        'user_type': user_type,
-        'is_instructor': user_type == 'instructor',
-        'use_unified_form': True,
+        'is_student_only': True,  # Flag to show student-only message in template
     })
 
 def login_view(request):
@@ -306,7 +306,11 @@ def enroll(request):
         if request.user.instructor_profile:
             is_instr = True
     except Exception:
-        is_instr = False
+        pass
+    
+    # Also check if user is staff/superuser
+    if request.user.is_staff or request.user.is_superuser:
+        is_instr = True
 
     context = {
         'form': form,
@@ -328,12 +332,17 @@ def dashboard(request):
 
     # Allow instructors (class advisors) who have an assigned section to access without enrolling
     is_instructor_with_section = False
-    try:
-        instr = request.user.instructor_profile
-        if instr and instr.section:
-            is_instructor_with_section = True
-    except InstructorProfile.DoesNotExist:
-        is_instructor_with_section = False
+    
+    # Check if user is staff/superuser
+    if request.user.is_staff or request.user.is_superuser:
+        is_instructor_with_section = True
+    else:
+        try:
+            instr = request.user.instructor_profile
+            if instr and instr.section:
+                is_instructor_with_section = True
+        except InstructorProfile.DoesNotExist:
+            is_instructor_with_section = False
 
     # Redirect students without enrollment; instructors with a section are allowed
     if not (is_instructor_with_section or (current_presence and current_presence.section)):
@@ -344,12 +353,17 @@ def dashboard(request):
     network_status = 'online' if is_on_university_wifi(request) else 'offline'
     
     # Determine if user is instructor
-    try:
-        instructor_profile = request.user.instructor_profile
+    is_instructor = False
+    if request.user.is_staff or request.user.is_superuser:
         is_instructor = True
-    except InstructorProfile.DoesNotExist:
         instructor_profile = None
-        is_instructor = False
+    else:
+        try:
+            instructor_profile = request.user.instructor_profile
+            is_instructor = True
+        except InstructorProfile.DoesNotExist:
+            instructor_profile = None
+            is_instructor = False
 
     # Filter rooms based on user type
     if is_instructor:
@@ -882,7 +896,11 @@ def profile_view(request, username=None):
     try:
         profile = user.profile  # type: ignore
     except UserProfile.DoesNotExist:
-        profile = UserProfile.objects.create(user=user)
+        # Don't auto-create UserProfile for staff/superuser accounts
+        if user.is_staff or user.is_superuser:
+            profile = None
+        else:
+            profile = UserProfile.objects.create(user=user)
     
     try:
         presence = user.studentpresence  # type: ignore
@@ -895,7 +913,8 @@ def profile_view(request, username=None):
         is_instructor = True
     except InstructorProfile.DoesNotExist:
         instructor_profile_obj = None
-        is_instructor = False
+        # Also check if user is staff/superuser
+        is_instructor = user.is_staff or user.is_superuser
 
     # If user has a presence record, check for an active SignInRecord. If there's no active sign-in,
     # clear the displayed current_room so templates can treat the user as "outside department".
@@ -905,6 +924,45 @@ def profile_view(request, username=None):
             presence.current_room = None
     
     if request.method == 'POST' and is_own_profile:
+        # Handle admin-only clear operations
+        if request.user.is_staff or request.user.is_superuser:
+            wants_json = (
+                request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+                or (request.headers.get('Content-Type', '') or '').startswith('application/json')
+            )
+            
+            post_data = request.POST
+            if (request.headers.get('Content-Type', '') or '').startswith('application/json'):
+                try:
+                    post_data = json.loads(request.body or b'{}')
+                except json.JSONDecodeError:
+                    post_data = {}
+            
+            # Clear profile picture
+            if 'clear_profile_picture' in post_data:
+                if profile and profile.profile_picture:
+                    profile.profile_picture.delete()
+                    profile.save()
+                if wants_json:
+                    return JsonResponse({'success': True, 'message': 'Profile picture cleared.'})
+                messages.success(request, '✓ Profile picture cleared.')
+                return redirect(request.path)
+            
+            # Clear bio
+            if 'clear_bio' in post_data:
+                if profile:
+                    profile.bio = ''
+                    profile.save()
+                if wants_json:
+                    return JsonResponse({'success': True, 'message': 'Bio cleared.'})
+                messages.success(request, '✓ Bio cleared.')
+                return redirect(request.path)
+        
+        # Regular form processing
+        # Staff users don't have UserProfiles, skip form processing
+        if profile is None:
+            return redirect(request.path)
+            
         wants_json = (
             request.headers.get('X-Requested-With') == 'XMLHttpRequest'
             or (request.headers.get('Content-Type', '') or '').startswith('application/json')
@@ -973,7 +1031,7 @@ def profile_view(request, username=None):
             'last_name': user.last_name,
             'email': user.email,
         }
-        form = ProfileForm(instance=profile, initial=initial_data) if is_own_profile else None
+        form = ProfileForm(instance=profile, initial=initial_data) if (is_own_profile and profile is not None) else None
     
     context = {
         'profile_user': user,
@@ -1722,18 +1780,22 @@ def admin_force_signout(request, activity_id):
 @login_required(login_url='login')
 def instructor_dashboard(request):
     """Dashboard for instructors to manage their students' FRC attendance."""
-    # Check if user is an instructor
-    try:
-        instructor_profile = request.user.instructor_profile
-    except InstructorProfile.DoesNotExist:
-        messages.error(request, 'You do not have instructor privileges.')
-        return redirect('home')
+    # Check if user is an instructor or staff/superuser
+    instructor_profile = None
+    is_staff_user = request.user.is_staff or request.user.is_superuser
+    
+    if not is_staff_user:
+        try:
+            instructor_profile = request.user.instructor_profile
+        except InstructorProfile.DoesNotExist:
+            messages.error(request, 'You do not have instructor privileges.')
+            return redirect('home')
 
     # Get all rooms for the dropdown
     all_rooms = Room.objects.all().order_by('name')
 
-    # Handle room selection
-    if request.method == 'POST' and 'room_id' in request.POST:
+    # Handle room selection (only for regular instructors with profile)
+    if request.method == 'POST' and 'room_id' in request.POST and instructor_profile:
         room_id = request.POST.get('room_id')
         if room_id:
             room = get_object_or_404(Room, id=room_id)
@@ -2016,33 +2078,47 @@ def instructor_reports(request):
 @login_required(login_url='login')
 def instructor_manage_signout(request):
     """Instructor view to adjust student sign-out times for cleaning activity."""
-    # Check if user is an instructor
-    try:
-        instructor_profile = request.user.instructor_profile
-    except InstructorProfile.DoesNotExist:
-        messages.error(request, 'You do not have instructor privileges.')
-        return redirect('home')
+    # Check if user is an instructor or staff/superuser
+    instructor_profile = None
+    is_staff_user = request.user.is_staff or request.user.is_superuser
     
-    section = instructor_profile.section
+    if not is_staff_user:
+        try:
+            instructor_profile = request.user.instructor_profile
+        except InstructorProfile.DoesNotExist:
+            messages.error(request, 'You do not have instructor privileges.')
+            return redirect('home')
+    
+    section = instructor_profile.section if instructor_profile else None
     today = timezone.now().astimezone(tz('Asia/Manila')).date()
     recent_cutoff = today - timedelta(days=7)
 
-    if not section:
+    if not section and not is_staff_user:
         activities = ActivityHour.objects.none()
         recent_activities = ActivityHour.objects.none()
         messages.warning(request, 'No section assigned yet. Ask an administrator to assign your section.')
     else:
-        # Primary panel: today's sessions
-        activities = ActivityHour.objects.filter(
-            student__studentpresence__section=section,
-            sign_in_time__date=today
-        ).select_related('student').order_by('-sign_in_time')
+        # Primary panel: today's sessions (all if staff, section-filtered if instructor)
+        if is_staff_user:
+            activities = ActivityHour.objects.filter(
+                sign_in_time__date=today
+            ).select_related('student').order_by('-sign_in_time')
+        else:
+            activities = ActivityHour.objects.filter(
+                student__studentpresence__section=section,
+                sign_in_time__date=today
+            ).select_related('student').order_by('-sign_in_time')
 
         # Secondary panel: last 7 days (including today) so instructors can still adjust records
-        recent_activities = ActivityHour.objects.filter(
-            student__studentpresence__section=section,
-            sign_in_time__date__gte=recent_cutoff
-        ).select_related('student').order_by('-sign_in_time')[:100]
+        if is_staff_user:
+            recent_activities = ActivityHour.objects.filter(
+                sign_in_time__date__gte=recent_cutoff
+            ).select_related('student').order_by('-sign_in_time')[:100]
+        else:
+            recent_activities = ActivityHour.objects.filter(
+                student__studentpresence__section=section,
+                sign_in_time__date__gte=recent_cutoff
+            ).select_related('student').order_by('-sign_in_time')[:100]
 
     # compute a simple progress percentage for each activity (assuming 2h required)
     now = timezone.now()
@@ -2690,3 +2766,530 @@ def laboratory_history(request):
         'sparkline_points': sparkline_points,
     }
     return render(request, 'laboratory_history.html', context)
+
+
+# ============ INSTRUCTOR ADMIN FEATURES ============
+
+@login_required(login_url='login')
+def instructor_admin(request):
+    """
+    Professional instructor administration panel for managing students and rooms.
+    ONLY INSTRUCTORS can access this feature.
+    """
+    # Check if user is an instructor or staff/superuser
+    instructor_profile = None
+    is_staff_user = request.user.is_staff or request.user.is_superuser
+    
+    if not is_staff_user:
+        try:
+            instructor_profile = request.user.instructor_profile
+        except InstructorProfile.DoesNotExist:
+            messages.error(request, 'Access Denied: You do not have instructor privileges.')
+            return redirect('home')
+    
+    section = instructor_profile.section if instructor_profile else None
+    
+    # Get all rooms in the system
+    all_rooms = Room.objects.all().order_by('name')
+    
+    # Get students in this instructor's section
+    instructor_users = InstructorProfile.objects.values_list('user_id', flat=True)
+    students = (StudentPresence.objects
+                .filter(section=section)
+                .exclude(student__id__in=instructor_users)
+                .exclude(student__is_staff=True)
+                .exclude(student__is_superuser=True)
+                .exclude(student__username__iexact='admin')
+                .select_related('student', 'student__profile')
+                .order_by('student__first_name', 'student__last_name'))
+    
+    if not section:
+        students = StudentPresence.objects.none()
+        messages.warning(request, 'No section assigned. Contact administrator to assign your section.')
+    
+    # Handle room addition
+    if request.method == 'POST' and 'add_room' in request.POST:
+        room_name = request.POST.get('room_name', '').strip()
+        room_description = request.POST.get('room_description', '').strip()
+        
+        if room_name:
+            if Room.objects.filter(name__iexact=room_name).exists():
+                messages.warning(request, f'Room "{room_name}" already exists.')
+            else:
+                new_room = Room.objects.create(
+                    name=room_name,
+                    description=room_description
+                )
+                messages.success(request, f'✓ Room "{new_room.name}" created successfully.')
+                return redirect('instructor_admin')
+        else:
+            messages.error(request, 'Room name is required.')
+    
+    # Handle room deletion
+    if request.method == 'POST' and 'delete_room' in request.POST:
+        room_id = request.POST.get('delete_room')
+        try:
+            room = Room.objects.get(id=room_id)
+            room_name = room.name
+            room.delete()
+            messages.success(request, f'✓ Room "{room_name}" deleted successfully.')
+            return redirect('instructor_admin')
+        except Room.DoesNotExist:
+            messages.error(request, 'Room not found.')
+    
+    # Handle student account status check
+    accounts_created = []
+    accounts_pending = []
+    
+    for student_presence in students:
+        student = student_presence.student
+        try:
+            profile = student.profile
+            has_account = True
+            student_id = profile.student_id_number or 'Not set'
+        except UserProfile.DoesNotExist:
+            has_account = False
+            student_id = 'Not set'
+        
+        student_data = {
+            'id': student.id,
+            'username': student.username,
+            'full_name': student.get_full_name() or student.username,
+            'email': student.email or 'No email set',
+            'student_id': student_id,
+            'has_account': has_account,
+            'presence': student_presence,
+        }
+        
+        if has_account:
+            accounts_created.append(student_data)
+        else:
+            accounts_pending.append(student_data)
+    
+    # Check if user is on university network
+    network_status = 'online' if is_on_university_wifi(request) else 'offline'
+    
+    # Get instructor's current presence info
+    try:
+        instructor_presence = StudentPresence.objects.get(student=request.user)
+    except StudentPresence.DoesNotExist:
+        instructor_presence = None
+    
+    context = {
+        'instructor_profile': instructor_profile,
+        'section': section,
+        'all_rooms': all_rooms,
+        'accounts_created': accounts_created,
+        'accounts_pending': accounts_pending,
+        'total_students': len(accounts_created) + len(accounts_pending),
+        'network_status': network_status,
+        'instructor_presence': instructor_presence,
+    }
+    
+    return render(request, 'instructor_admin.html', context)
+
+
+@login_required(login_url='login')
+def instructor_admin_student_detail(request, student_id):
+    """
+    Display detailed student information for instructor management.
+    ONLY INSTRUCTORS can access this feature.
+    """
+    # Check if user is an instructor or staff/superuser
+    instructor_profile = None
+    is_staff_user = request.user.is_staff or request.user.is_superuser
+    
+    if not is_staff_user:
+        try:
+            instructor_profile = request.user.instructor_profile
+        except InstructorProfile.DoesNotExist:
+            messages.error(request, 'Access Denied: Instructor privileges required.')
+            return redirect('home')
+    
+    # Verify student is in instructor's section (skip for staff users)
+    student = get_object_or_404(User, id=student_id)
+    try:
+        student_presence = student.studentpresence
+    except StudentPresence.DoesNotExist:
+        messages.error(request, 'Student not found in system.')
+        return redirect('instructor_admin')
+    
+    if not is_staff_user and student_presence.section != instructor_profile.section:
+        messages.error(request, 'You can only view students in your section.')
+        return redirect('instructor_admin')
+    
+    # Get student profile
+    try:
+        profile = student.profile
+    except UserProfile.DoesNotExist:
+        profile = UserProfile.objects.create(user=student)
+    
+    # Get student's activity records (last 30 days)
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    sign_in_records = SignInRecord.objects.filter(
+        student=student,
+        sign_in_time__gte=thirty_days_ago
+    ).order_by('-sign_in_time')[:15]
+    
+    # Get FRC attendance (current month)
+    today = date.today()
+    current_month_start = today.replace(day=1)
+    frc_records = FlagRaisingCeremony.objects.filter(
+        student=student,
+        attendance_date__gte=current_month_start
+    ).order_by('-attendance_date')
+    
+    frc_present = frc_records.filter(present=True).count()
+    frc_total = frc_records.count()
+    frc_percentage = round((frc_present / frc_total * 100) if frc_total > 0 else 0)
+    
+    # Get activity hours (current month)
+    activity_hours = ActivityHour.objects.filter(
+        student=student,
+        sign_in_time__date__gte=current_month_start
+    ).order_by('-sign_in_time')
+    
+    # Calculate statistics
+    total_lab_hours = 0
+    for record in sign_in_records:
+        if record.duration_minutes():
+            total_lab_hours += record.duration_minutes()
+    
+    total_lab_hours = round(total_lab_hours / 60, 1) if total_lab_hours else 0
+    
+    context = {
+        'instructor_profile': instructor_profile,
+        'student': student,
+        'student_presence': student_presence,
+        'profile': profile,
+        'sign_in_records': sign_in_records,
+        'frc_records': frc_records,
+        'frc_present': frc_present,
+        'frc_total': frc_total,
+        'frc_percentage': frc_percentage,
+        'activity_hours': activity_hours,
+        'total_lab_hours': total_lab_hours,
+    }
+    
+    return render(request, 'instructor_admin_student_detail.html', context)
+
+
+# ============ ADMIN INSTRUCTOR MANAGEMENT ============
+
+def admin_required(function):
+    """Decorator to ensure only staff/superusers can access."""
+    def wrap(request, *args, **kwargs):
+        if not (request.user.is_staff or request.user.is_superuser):
+            messages.error(request, 'Access Denied: Administrator privileges required.')
+            return redirect('home')
+        return function(request, *args, **kwargs)
+    return wrap
+
+
+@login_required(login_url='login')
+@admin_required
+def admin_system_dashboard(request):
+    """
+    ADMIN-ONLY System Dashboard for superusers/staff.
+    Displays system administration controls and statistics.
+    """
+    # Get system statistics
+    total_users = User.objects.count()
+    
+    # Count instructors: users with InstructorProfile
+    total_instructors = InstructorProfile.objects.count()
+    
+    # Count students: users who are NOT staff/admin AND have no InstructorProfile
+    # This correctly separates students from instructors and admin accounts
+    total_students = User.objects.filter(
+        is_staff=False,
+        instructor_profile__isnull=True
+    ).count()
+    
+    total_rooms = Room.objects.count()
+    
+    # Get all instructor accounts for management
+    instructors = InstructorProfile.objects.select_related('user', 'section').order_by('-user__date_joined')
+    
+    context = {
+        'total_users': total_users,
+        'total_instructors': total_instructors,
+        'total_students': total_students,
+        'total_rooms': total_rooms,
+        'instructors': instructors,
+        'is_admin_dashboard': True,
+    }
+    
+    return render(request, 'admin_system_dashboard.html', context)
+
+
+@login_required(login_url='login')
+@admin_required
+def admin_user_management(request):
+    """
+    ADMIN-ONLY User Management for superusers/staff.
+    Manage all users - delete accounts, profiles, and data.
+    """
+    # Handle photo upload
+    if request.method == 'POST' and 'upload_photo_user_id' in request.POST:
+        user_id = request.POST.get('upload_photo_user_id', '').strip()
+        
+        try:
+            user_id_int = int(user_id)
+            user = User.objects.get(id=user_id_int)
+            
+            if 'profile_picture' not in request.FILES:
+                messages.error(request, 'No image file selected.')
+            else:
+                profile = user.profile
+                # Delete old photo if exists
+                if profile.profile_picture:
+                    profile.profile_picture.delete()
+                # Upload new photo
+                profile.profile_picture = request.FILES['profile_picture']
+                profile.save()
+                messages.success(request, f'✓ Profile picture updated for "{user.username}".')
+        except (ValueError, User.DoesNotExist):
+            messages.error(request, 'User not found or invalid file.')
+        except UserProfile.DoesNotExist:
+            messages.error(request, 'User profile does not exist.')
+        except Exception as e:
+            messages.error(request, f'Error uploading image: {str(e)}')
+        
+        return redirect('admin_user_management')
+    
+    # Handle photo deletion (separate from clear data)
+    if request.method == 'POST' and 'delete_photo_user_id' in request.POST:
+        user_id = request.POST.get('delete_photo_user_id', '').strip()
+        
+        try:
+            user_id_int = int(user_id)
+            user = User.objects.get(id=user_id_int)
+            
+            profile = user.profile
+            if profile.profile_picture:
+                profile.profile_picture.delete()
+                profile.save()
+                messages.success(request, f'✓ Profile picture deleted for "{user.username}".')
+            else:
+                messages.info(request, f'No profile picture to delete for "{user.username}".')
+        except (ValueError, User.DoesNotExist):
+            messages.error(request, 'User not found.')
+        except UserProfile.DoesNotExist:
+            messages.error(request, 'User profile does not exist.')
+        
+        return redirect('admin_user_management')
+    
+    # Handle user deletion
+    if request.method == 'POST' and 'delete_user_id' in request.POST:
+        user_id = request.POST.get('delete_user_id', '').strip()
+        
+        try:
+            user_id_int = int(user_id)
+            user = User.objects.get(id=user_id_int)
+            
+            # Prevent deleting own account
+            if user.id == request.user.id:
+                messages.error(request, 'You cannot delete your own account.')
+                return redirect('admin_user_management')
+            
+            username = user.username
+            user_type = 'Staff/Admin' if user.is_staff else 'User'
+            user.delete()
+            messages.success(request, f'✓ {user_type} account "{username}" deleted successfully.')
+        except (ValueError, User.DoesNotExist):
+            messages.error(request, 'User not found or invalid ID.')
+        
+        return redirect('admin_user_management')
+    
+    # Handle profile data deletion
+    if request.method == 'POST' and 'clear_user_data_id' in request.POST:
+        user_id = request.POST.get('clear_user_data_id', '').strip()
+        
+        try:
+            user_id_int = int(user_id)
+            user = User.objects.get(id=user_id_int)
+            
+            # Clear profile data
+            try:
+                profile = user.profile
+                if profile.profile_picture:
+                    profile.profile_picture.delete()
+                profile.bio = ''
+                profile.phone_number = ''
+                profile.save()
+                messages.success(request, f'✓ Profile data cleared for "{user.username}".')
+            except UserProfile.DoesNotExist:
+                pass
+        except (ValueError, User.DoesNotExist):
+            messages.error(request, 'User not found.')
+        
+        return redirect('admin_user_management')
+    
+    # Get all users (excluding current user for display)
+    # GET: Display users separated by account type
+    all_users = User.objects.exclude(id=request.user.id).select_related('profile').order_by('-date_joined')
+    
+    # Separate by account type - NOT just by is_staff
+    admin_users = all_users.filter(is_staff=True)  # Admin/superuser accounts
+    instructor_users = all_users.filter(instructor_profile__isnull=False).distinct()  # Users with InstructorProfile
+    student_users = all_users.filter(
+        is_staff=False,
+        instructor_profile__isnull=True
+    )  # Regular students (no instructor role, not admin)
+    
+    # Calculate correct totals including current user for stats display
+    total_admin_count = User.objects.filter(is_staff=True).count()
+    total_instructor_count = User.objects.filter(instructor_profile__isnull=False).distinct().count()
+    total_student_count = User.objects.filter(is_staff=False, instructor_profile__isnull=True).count()
+    total_users_count = User.objects.count()
+    
+    context = {
+        'admin_users': admin_users,
+        'instructor_users': instructor_users,
+        'student_users': student_users,
+        'total_users': total_users_count,
+        'total_admin_count': total_admin_count,
+        'total_instructor_count': total_instructor_count,
+        'total_student_count': total_student_count,
+    }
+    
+    return render(request, 'admin_user_management.html', context)
+
+
+@login_required(login_url='login')
+@admin_required
+def admin_instructor_management(request):
+    """
+    ADMIN-ONLY interface for creating and managing instructor accounts.
+    
+    SECURITY: Only staff/superusers can access. This prevents students from
+    creating unauthorized instructor accounts.
+    """
+    # Get all instructors
+    instructors = InstructorProfile.objects.select_related('user', 'section', 'instructor_room').order_by('user__first_name', 'user__last_name')
+    
+    # Get all available sections
+    sections = Section.objects.all().order_by('year', 'section')
+    rooms = Room.objects.all().order_by('name')
+    
+    # Handle instructor creation form submission
+    if request.method == 'POST' and 'create_instructor' in request.POST:
+        username = request.POST.get('username', '').strip().lower()
+        email = request.POST.get('email', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        password = request.POST.get('password', '')
+        section_id = request.POST.get('section')
+        
+        # Validation
+        if not all([username, email, password, first_name, last_name]):
+            messages.error(request, 'All fields are required.')
+        elif len(password) < 8:
+            messages.error(request, 'Password must be at least 8 characters long.')
+        elif User.objects.filter(username__iexact=username).exists():
+            messages.error(request, f'Username "{username}" already exists.')
+        elif User.objects.filter(email=email).exists():
+            messages.error(request, f'Email "{email}" is already registered.')
+        else:
+            # Create user account
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                is_staff=False  # Instructor is not staff (different role system)
+            )
+            
+            # Get section
+            section = None
+            if section_id:
+                try:
+                    section = Section.objects.get(id=section_id)
+                except Section.DoesNotExist:
+                    section = None
+            
+            # Create instructor profile
+            InstructorProfile.objects.create(
+                user=user,
+                section=section,
+                instructor_room=None
+            )
+            
+            messages.success(request, f'✓ Instructor account "{username}" created successfully!')
+            return redirect('admin_instructor_management')
+    
+    # Handle instructor editing
+    if request.method == 'POST' and 'edit_instructor' in request.POST:
+        instructor_id = request.POST.get('edit_instructor')
+        section_id = request.POST.get('section')
+        room_id = request.POST.get('room')
+        
+        try:
+            instructor_profile = InstructorProfile.objects.get(user_id=instructor_id)
+            
+            # Update section
+            if section_id:
+                try:
+                    instructor_profile.section = Section.objects.get(id=section_id)
+                except Section.DoesNotExist:
+                    instructor_profile.section = None
+            else:
+                instructor_profile.section = None
+            
+            # Update room
+            if room_id:
+                try:
+                    instructor_profile.instructor_room = Room.objects.get(id=room_id)
+                except Room.DoesNotExist:
+                    instructor_profile.instructor_room = None
+            else:
+                instructor_profile.instructor_room = None
+            
+            instructor_profile.save()
+            messages.success(request, f'✓ Instructor profile updated successfully!')
+        except InstructorProfile.DoesNotExist:
+            messages.error(request, 'Instructor not found.')
+        
+        return redirect('admin_instructor_management')
+    
+    # Handle instructor deletion
+    if request.method == 'POST' and 'delete_instructor' in request.POST:
+        instructor_id = request.POST.get('delete_instructor', '').strip()
+        
+        # Validate that instructor_id is not empty and is a valid integer
+        if not instructor_id:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'Invalid instructor ID.'}, status=400)
+            messages.error(request, 'Invalid instructor ID. Please try again.')
+            return redirect('admin_instructor_management')
+        
+        try:
+            instructor_id_int = int(instructor_id)
+            user = User.objects.get(id=instructor_id_int)
+            username = user.username
+            user.delete()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': f'✓ Instructor account "{username}" deleted successfully!'})
+            
+            messages.success(request, f'✓ Instructor account "{username}" deleted successfully!')
+        except ValueError:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'Invalid instructor ID format.'}, status=400)
+            messages.error(request, 'Invalid instructor ID format.')
+        except User.DoesNotExist:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'message': 'Instructor not found.'}, status=404)
+            messages.error(request, 'Instructor not found.')
+        
+        return redirect('admin_instructor_management')
+    
+    context = {
+        'instructors': instructors,
+        'sections': sections,
+        'rooms': rooms,
+    }
+    
+    return render(request, 'admin_instructor_management.html', context)

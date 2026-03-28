@@ -306,13 +306,20 @@
                     {% if user.is_authenticated %}
                         <li><a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">Dashboard</a></li>
                         
-                        {% if user.instructor_profile %}
+                        {% if user.is_staff or user.is_superuser %}
+                            <!-- ADMIN USERS: System Dashboard -->
+                            <li><a href="/admin-dashboard/" class="nav-link accent {% if request.path == '/admin-dashboard/' %}active{% endif %}">Admin</a></li>
+                        {% elif is_instructor %}
+                            <!-- REGULAR INSTRUCTORS: Instructor Admin Panel -->
+                            {% url 'instructor_admin' as instructor_admin_url %}
                             {% url 'instructor_dashboard' as instructor_dashboard_url %}
                             {% url 'instructor_manage_signout' as instructor_manage_url %}
+                            <li><a href="{{ instructor_admin_url }}" class="nav-link accent {% if request.path == instructor_admin_url %}active{% endif %}">Admin</a></li>
                             <li><a href="{{ instructor_dashboard_url }}" class="nav-link accent {% if request.path == instructor_dashboard_url %}active{% endif %}">FRC</a></li>
                             <li><a href="{{ instructor_manage_url }}" class="nav-link accent {% if request.path == instructor_manage_url %}active{% endif %}">Manage</a></li>
                             <li><a href="/laboratory/history/" class="nav-link accent {% if request.path == '/laboratory/history/' %}active{% endif %}">Lab History</a></li>
                         {% else %}
+                            <!-- STUDENTS: Find Peers & Attendance -->
                             <li><a href="/search/" class="nav-link {% if request.path == '/search/' %}active{% endif %}">Find Peers</a></li>
                             <li><a href="/attendance/" class="nav-link success {% if request.path == '/attendance/' %}active{% endif %}">Attendance</a></li>
                         {% endif %}

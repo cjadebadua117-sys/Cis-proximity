@@ -1,0 +1,486 @@
+{% extends 'base.html' %}
+{% load utils_tags %}
+
+{% block title %}Student Details | {{ student.get_full_name }} | CIS-Prox{% endblock %}
+
+{% block content %}
+<style>
+    .detail-panel {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #334155;
+    }
+
+    .detail-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #e5edf8;
+    }
+
+    .back-button {
+        padding: 0.6rem 1.2rem;
+        background: #334155;
+        color: #cbd5e1;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        display: inline-block;
+    }
+
+    .back-button:hover {
+        background: #475569;
+        color: #e5edf8;
+    }
+
+    .student-overview {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .overview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+    }
+
+    .overview-item {
+        border-left: 3px solid #2563eb;
+        padding-left: 1rem;
+    }
+
+    .overview-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+    }
+
+    .overview-value {
+        color: #e5edf8;
+        font-size: 1.15rem;
+        font-weight: 600;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin: 2.5rem 0 1.5rem 0;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #334155;
+    }
+
+    .section-icon {
+        font-size: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #e5edf8;
+        margin: 0;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.25rem;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #2563eb;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .record-list {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .record-item {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.25rem;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 1.5rem;
+        align-items: center;
+    }
+
+    .record-item:hover {
+        border-color: #475569;
+    }
+
+    .record-room {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #e5edf8;
+        margin-bottom: 0.5rem;
+    }
+
+    .record-time {
+        color: #94a3b8;
+        font-size: 0.9rem;
+    }
+
+    .record-duration {
+        text-align: right;
+        padding: 0.75rem 1rem;
+        background: rgba(37, 99, 235, 0.1);
+        border-radius: 4px;
+        color: #e5edf8;
+        font-weight: 600;
+    }
+
+    .frc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .frc-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.25rem;
+        text-align: center;
+    }
+
+    .frc-value {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #2563eb;
+        margin-bottom: 0.25rem;
+    }
+
+    .frc-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .frc-bar {
+        width: 100%;
+        height: 24px;
+        background: #0f172a;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 0.75rem;
+        border: 1px solid #334155;
+    }
+
+    .frc-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+        transition: width 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #94a3b8;
+    }
+
+    .empty-state-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .profile-picture {
+        width: 120px;
+        height: 120px;
+        border-radius: 8px;
+        object-fit: cover;
+        border: 2px solid #334155;
+    }
+
+    .profile-section {
+        display: flex;
+        gap: 2rem;
+        align-items: start;
+        margin-bottom: 2rem;
+    }
+
+    .profile-info {
+        flex: 1;
+    }
+
+    .profile-name {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #e5edf8;
+        margin: 0;
+    }
+
+    .profile-username {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        margin: 0.25rem 0 0 0;
+    }
+
+    .profile-email {
+        color: #cbd5e1;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+
+    .contact-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+
+    .detail-item {
+        border-left: 2px solid #334155;
+        padding-left: 1rem;
+    }
+
+    .detail-label {
+        color: #94a3b8;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .detail-value {
+        color: #cbd5e1;
+        font-size: 0.95rem;
+        margin-top: 0.25rem;
+    }
+</style>
+
+<div class="detail-panel">
+    <!-- Header -->
+    <div class="detail-header">
+        <h1 class="detail-title">Student Profile Details</h1>
+        <a href="{% url 'instructor_admin' %}" class="back-button">← Back to Admin</a>
+    </div>
+
+    <!-- Student Overview -->
+    <div class="student-overview">
+        <div class="profile-section">
+            {% if profile.profile_picture %}
+                <img src="{{ profile.profile_picture.url }}" alt="Profile" class="profile-picture">
+            {% else %}
+                <div class="profile-picture" style="background: #334155; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: #94a3b8; font-size: 3rem;">👤</span>
+                </div>
+            {% endif %}
+            
+            <div class="profile-info">
+                <h2 class="profile-name">{{ student.get_full_name|default:student.username }}</h2>
+                <p class="profile-username">@{{ student.username }}</p>
+                <p class="profile-email">{{ student.email|default:"No email set" }}</p>
+                
+                <div class="contact-details">
+                    <div class="detail-item">
+                        <div class="detail-label">Student ID</div>
+                        <div class="detail-value">{{ profile.student_id_number|default:"—" }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Phone</div>
+                        <div class="detail-value">{{ profile.phone_number|default:"—" }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Section</div>
+                        <div class="detail-value">{{ student_presence.section|default:"—" }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Current Location</div>
+                        <div class="detail-value">
+                            {% if student_presence.current_room and student_presence.is_online %}
+                                <span style="color: #22c55e;">{{ student_presence.current_room }}</span>
+                            {% else %}
+                                <span style="color: #94a3b8;">Outside Department</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lab Activity Summary -->
+    <div class="section-header">
+        <span class="section-icon">🔬</span>
+        <h2 class="section-title">Lab Activity (Last 30 Days)</h2>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ sign_in_records|length }}</div>
+            <div class="stat-label">Lab Sessions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_lab_hours }}</div>
+            <div class="stat-label">Total Hours</div>
+        </div>
+    </div>
+
+    {% if sign_in_records %}
+        <div class="record-list">
+            {% for record in sign_in_records %}
+                <div class="record-item">
+                    <div>
+                        <div class="record-room">{{ record.room.name }}</div>
+                        <div class="record-time">
+                            {{ record.sign_in_time|date:"M d, Y" }} 
+                            {{ record.sign_in_time|date:"h:i A" }}
+                            {% if record.sign_out_time %}
+                                – {{ record.sign_out_time|date:"h:i A" }}
+                            {% else %}
+                                <span style="color: #f97316;"> (Signed in)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if record.duration_minutes %}
+                        <div class="record-duration">{{ record.duration_minutes }} min</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div>No lab activity in the last 30 days</div>
+        </div>
+    {% endif %}
+
+    <!-- FRC Attendance -->
+    <div class="section-header">
+        <span class="section-icon">🚩</span>
+        <h2 class="section-title">Flag Raising Ceremony (Current Month)</h2>
+    </div>
+
+    <div class="frc-grid">
+        <div class="frc-card">
+            <div class="frc-value">{{ frc_present }}</div>
+            <div class="frc-label">Present</div>
+            <div class="frc-bar">
+                <div class="frc-fill" style="width: {{ frc_percentage }}%;">
+                    {% if frc_percentage > 0 %}{{ frc_percentage }}%{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="frc-card">
+            <div class="frc-value">{{ frc_total }}</div>
+            <div class="frc-label">Total Days</div>
+        </div>
+        <div class="frc-card">
+            <div class="frc-value">{{ frc_percentage }}%</div>
+            <div class="frc-label">Attendance Rate</div>
+        </div>
+    </div>
+
+    {% if frc_records %}
+        <div class="record-list" style="margin-top: 1.5rem;">
+            {% for record in frc_records %}
+                <div class="record-item">
+                    <div>
+                        <div class="record-room">
+                            {% if record.present %}
+                                <span style="color: #22c55e;">✓ Present</span>
+                            {% else %}
+                                <span style="color: #ef4444;">✗ Absent</span>
+                            {% endif %}
+                        </div>
+                        <div class="record-time">{{ record.attendance_date|date:"l, F d, Y" }}</div>
+                    </div>
+                    {% if record.notes %}
+                        <div class="record-duration">{{ record.notes }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div>No FRC records for this month</div>
+        </div>
+    {% endif %}
+
+    <!-- Activity Hours -->
+    <div class="section-header">
+        <span class="section-icon">⏰</span>
+        <h2 class="section-title">Activity Hours (Current Month)</h2>
+    </div>
+
+    {% if activity_hours %}
+        <div class="record-list">
+            {% for activity in activity_hours %}
+                <div class="record-item">
+                    <div>
+                        <div class="record-room">
+                            {% if activity.sign_out_time %}
+                                <span style="color: #22c55e;">✓ Completed</span>
+                            {% else %}
+                                <span style="color: #f97316;">⏳ In Progress</span>
+                            {% endif %}
+                        </div>
+                        <div class="record-time">
+                            {{ activity.sign_in_time|date:"M d, Y" }}
+                            {{ activity.sign_in_time|date:"h:i A" }}
+                            {% if activity.sign_out_time %}
+                                – {{ activity.sign_out_time|date:"h:i A" }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if activity.sign_out_time and activity.duration_hours %}
+                        <div class="record-duration">{{ activity.duration_hours }}h</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div>No activity hours recorded this month</div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

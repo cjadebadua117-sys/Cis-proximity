@@ -1,0 +1,662 @@
+{% extends 'base.html' %}
+{% load utils_tags %}
+
+{% block title %}Instructor Management | Admin Panel | CIS-Prox{% endblock %}
+
+{% block content %}
+<style>
+    .admin-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+    }
+
+    .admin-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #334155;
+    }
+
+    .admin-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #e5edf8;
+        margin: 0 0 0.5rem 0;
+    }
+
+    .admin-subtitle {
+        color: #94a3b8;
+        font-size: 0.95rem;
+    }
+
+    .security-banner {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%);
+        border: 1px solid rgba(34, 197, 94, 0.3);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 2rem;
+        color: #22c55e;
+    }
+
+    .security-banner-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .security-banner-title::before {
+        content: "🔒";
+        font-size: 1.2rem;
+    }
+
+    .tabs-container {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #334155;
+    }
+
+    .tab-button {
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .tab-button.active {
+        border-bottom-color: #2563eb;
+        color: #e5edf8;
+    }
+
+    .tab-button:hover {
+        color: #cbd5e1;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Create Instructor Form */
+    .create-form {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-section-title {
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: #e5edf8;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-label {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .form-input,
+    .form-select {
+        padding: 0.75rem;
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 4px;
+        color: #e5edf8;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .form-select {
+        cursor: pointer;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .btn-submit {
+        padding: 0.75rem 2rem;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .btn-submit:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-submit:active {
+        background: #1e40af;
+    }
+
+    /* Instructor List */
+    .instructor-list {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .instructor-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.5rem;
+        transition: all 0.2s;
+    }
+
+    .instructor-card:hover {
+        border-color: #475569;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+    }
+
+    .instructor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 1rem;
+    }
+
+    .instructor-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #e5edf8;
+        margin: 0;
+    }
+
+    .instructor-username {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin: 0.25rem 0 0 0;
+    }
+
+    .instructor-status {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 0.4rem 0.8rem;
+        border-radius: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        background: rgba(37, 99, 235, 0.15);
+        color: #2563eb;
+        border: 1px solid rgba(37, 99, 235, 0.3);
+    }
+
+    .instructor-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .info-item {
+        border-left: 2px solid #334155;
+        padding-left: 1rem;
+    }
+
+    .info-label {
+        color: #94a3b8;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+
+    .info-value {
+        color: #cbd5e1;
+        font-size: 0.95rem;
+    }
+
+    .edit-form-inline {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 4px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+
+    .edit-form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .instructor-actions {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .btn-edit,
+    .btn-delete {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .btn-edit {
+        background: #2563eb;
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-delete {
+        background: #ef4444;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #dc2626;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #94a3b8;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 1.25rem;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #2563eb;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
+    }
+</style>
+
+<div class="admin-container">
+    <!-- Header -->
+    <div class="admin-header">
+        <h1 class="admin-title">Instructor Account Management</h1>
+        <p class="admin-subtitle">Create and manage instructor accounts (Admin-only access)</p>
+    </div>
+
+    <!-- Security Notice -->
+    <div class="security-banner">
+        <div class="security-banner-title">Restricted Access Area</div>
+        <div>Only administrators can access this page. All instructor account creations are logged and require admin verification.</div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ instructors|length }}</div>
+            <div class="stat-label">Total Instructors</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ sections|length }}</div>
+            <div class="stat-label">Sections</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ rooms|length }}</div>
+            <div class="stat-label">Rooms</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <button class="tab-button active" onclick="switchTab('create-tab')">✚ Create Instructor</button>
+        <button class="tab-button" onclick="switchTab('list-tab')">👥 Manage Instructors</button>
+    </div>
+
+    <!-- CREATE INSTRUCTOR TAB -->
+    <div id="create-tab" class="tab-content active">
+        <form method="POST" class="create-form">
+            {% csrf_token %}
+            <div class="form-section-title">📝 Create New Instructor Account</div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">First Name *</label>
+                    <input type="text" name="first_name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Last Name *</label>
+                    <input type="text" name="last_name" class="form-input" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Username *</label>
+                    <input type="text" name="username" class="form-input" placeholder="lowercase-only" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email Address *</label>
+                    <input type="email" name="email" class="form-input" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Password (min 8 characters) *</label>
+                    <input type="password" name="password" class="form-input" minlength="8" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assigned Section (Optional)</label>
+                    <select name="section" class="form-select">
+                        <option value="">-- No section assigned --</option>
+                        {% for section in sections %}
+                            <option value="{{ section.id }}">{{ section }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <input type="hidden" name="create_instructor" value="1">
+                <button type="submit" class="btn-submit">Create Instructor Account</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- MANAGE INSTRUCTORS TAB -->
+    <div id="list-tab" class="tab-content">
+        {% if instructors %}
+            <div class="instructor-list">
+                {% for instructor in instructors %}
+                    <div class="instructor-card" data-instructor-id="{{ instructor.user.id }}">
+                        <div class="instructor-header">
+                            <div>
+                                <h3 class="instructor-name">{{ instructor.user.get_full_name|default:instructor.user.username }}</h3>
+                                <p class="instructor-username">@{{ instructor.user.username }}</p>
+                            </div>
+                            <div class="instructor-status">
+                                <span class="status-badge">Instructor</span>
+                            </div>
+                        </div>
+
+                        <div class="instructor-info">
+                            <div class="info-item">
+                                <div class="info-label">Email</div>
+                                <div class="info-value">{{ instructor.user.email }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Section</div>
+                                <div class="info-value">{{ instructor.section|default:"—" }}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Room</div>
+                                <div class="info-value">{{ instructor.instructor_room|default:"—" }}</div>
+                            </div>
+                        </div>
+
+                        <!-- Edit Form -->
+                        <form method="POST" class="edit-form-inline">
+                            {% csrf_token %}
+                            <div style="margin-bottom: 1rem; color: #94a3b8; font-size: 0.85rem;">Edit Instructor Assignment</div>
+                            
+                            <div class="edit-form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Section</label>
+                                    <select name="section" class="form-select">
+                                        <option value="">-- No section --</option>
+                                        {% for section in sections %}
+                                            <option value="{{ section.id }}" {% if instructor.section.id == section.id %}selected{% endif %}>
+                                                {{ section }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Room</label>
+                                    <select name="room" class="form-select">
+                                        <option value="">-- No room --</option>
+                                        {% for room in rooms %}
+                                            <option value="{{ room.id }}" {% if instructor.instructor_room.id == room.id %}selected{% endif %}>
+                                                {{ room.name }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="instructor-actions">
+                                <input type="hidden" name="edit_instructor" value="{{ instructor.user.id }}">
+                                <button type="submit" name="save" class="btn-edit">Save Changes</button>
+                                
+                                <button type="button" class="btn-delete" onclick="confirmDelete({{ instructor.user.id }}, '{{ instructor.user.username }}')" style="flex: 0">
+                                    Delete
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <div>No instructors created yet. Use the form above to create one.</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 2rem; max-width: 400px; color: #e5edf8;">
+        <h3 style="margin: 0 0 1rem 0;">Confirm Deletion</h3>
+        <p id="deleteMessage" style="color: #cbd5e1; margin-bottom: 1.5rem;">Are you sure you want to delete this instructor account? This action cannot be undone.</p>
+        
+        <form method="POST" style="width: 100%;">
+            {% csrf_token %}
+            <input type="hidden" id="deleteInstructorId" name="delete_instructor" value="">
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" class="btn-submit" style="flex: 1;" onclick="submitDelete(event)">Delete Account</button>
+                <button type="button" style="flex: 1; padding: 0.75rem 2rem; background: #475569; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 600;" onclick="closeDeleteModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function switchTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        document.getElementById(tabName).classList.add('active');
+
+        // Add active class to clicked button
+        event.target.classList.add('active');
+    }
+
+    function confirmDelete(instructorId, username) {
+        document.getElementById('deleteInstructorId').value = instructorId;
+        document.getElementById('deleteMessage').textContent = `Are you sure you want to delete the instructor account "@${username}"? This action cannot be undone.`;
+        const modal = document.getElementById('deleteModal');
+        modal.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+
+    function submitDelete(event) {
+        if (event) event.preventDefault();
+        
+        const instructorId = document.getElementById('deleteInstructorId').value;
+        const form = document.querySelector('#deleteModal form');
+        const formData = new FormData(form);
+        
+        // Use AJAX/fetch to submit instead of regular form submit
+        fetch(window.location.pathname, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            closeDeleteModal();
+            
+            // Show success message and update UI without reload
+            if (data.success) {
+                // Remove the instructor card from the list
+                const instructorCard = document.querySelector(`[data-instructor-id="${instructorId}"]`);
+                if (instructorCard) {
+                    instructorCard.style.animation = 'fadeOut 0.3s ease-in-out';
+                    setTimeout(() => {
+                        instructorCard.remove();
+                    }, 300);
+                }
+                
+                // Show success notification
+                showNotification(data.message, 'success');
+            } else {
+                showNotification(data.message || 'Error deleting instructor', 'error');
+            }
+        })
+        .catch(error => {
+            closeDeleteModal();
+            console.error('Error:', error);
+            showNotification('Error deleting instructor: ' + error.message, 'error');
+        });
+    }
+    
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            background: ${type === 'success' ? '#22c55e' : '#ef4444'};
+            color: white;
+            border-radius: 6px;
+            z-index: 2000;
+            animation: slideIn 0.3s ease-in-out;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease-in-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+</script>
+{% endblock %}
