@@ -280,7 +280,9 @@
                                 <span class="logo-prox">Prox</span>
                             </span>
                             {% if user.is_authenticated %}
-                                {% if is_instructor %}
+                                {% if is_admin %}
+                                    <small class="logo-sub">Admin Panel</small>
+                                {% elif is_instructor %}
                                     <small class="logo-sub">Instructor Management System</small>
                                 {% else %}
                                     <small class="logo-sub">Student Presence System</small>
@@ -304,7 +306,9 @@
                     <li><a href="/" class="nav-link {% if request.path == '/' %}active{% endif %}">Home</a></li>
                     
                     {% if user.is_authenticated %}
-                        <li><a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">Dashboard</a></li>
+                        {% if not user.is_staff and not user.is_superuser %}
+                            <li><a href="/dashboard/" class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}">Dashboard</a></li>
+                        {% endif %}
                         
                         {% if user.is_staff or user.is_superuser %}
                             <!-- ADMIN USERS: System Dashboard -->
@@ -319,12 +323,14 @@
                             <li><a href="{{ instructor_manage_url }}" class="nav-link accent {% if request.path == instructor_manage_url %}active{% endif %}">Manage</a></li>
                             <li><a href="/laboratory/history/" class="nav-link accent {% if request.path == '/laboratory/history/' %}active{% endif %}">Lab History</a></li>
                         {% else %}
-                            <!-- STUDENTS: Find Peers & Attendance -->
-                            <li><a href="/search/" class="nav-link {% if request.path == '/search/' %}active{% endif %}">Find Peers</a></li>
+                            <!-- STUDENTS: Find User & Attendance -->
+                            <li><a href="/search/" class="nav-link {% if request.path == '/search/' %}active{% endif %}">Find User</a></li>
                             <li><a href="/attendance/" class="nav-link success {% if request.path == '/attendance/' %}active{% endif %}">Attendance</a></li>
                         {% endif %}
                         
-                        <li><a href="/profile/" class="nav-link user {% if request.path == '/profile/' or request.path|startswith:'/profile/' %}active{% endif %}">{{ request.user.get_full_name|default:request.user.username }}</a></li>
+                        {% if not user.is_staff and not user.is_superuser %}
+                            <li><a href="/profile/" class="nav-link user {% if request.path == '/profile/' or request.path|startswith:'/profile/' %}active{% endif %}">{{ request.user.get_full_name|default:request.user.username }}</a></li>
+                        {% endif %}
                         <li><a href="/logout/" class="btn-logout">Logout</a></li>
                     {% else %}
                         <li><a href="/login/" class="nav-link {% if '/login' in request.path %}active{% endif %}">Login</a></li>

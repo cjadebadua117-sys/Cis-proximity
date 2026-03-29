@@ -9,8 +9,114 @@
             You are connected to the DMMMSU Network. Your status: <strong>ONLINE</strong>
         </div>
 
+        <!-- ADMIN DASHBOARD -->
+        {% if is_admin %}
+            <div class="card welcome-card" style="border-top: 3px solid var(--danger); background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.02) 100%);">
+                <h2>
+                    <svg class="icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+                    </svg>
+                    Admin Control Panel
+                </h2>
+                <p style="font-size: 1.05rem;">
+                    <strong>System Administrator</strong> | 
+                    <strong>Full System Access</strong>
+                </p>
+            </div>
+
+            <!-- Admin Quick Stats -->
+            <div class="stat-grid" style="margin-bottom: 2rem;">
+                <div class="quick-card">
+                    <h4>ROLE</h4>
+                    <div class="value">
+                        <svg class="icon" viewBox="0 0 24 24" width="28" height="28" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                            <path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v1h20v-1c0-3.33-6.67-5-10-5z"/>
+                        </svg>
+                    </div>
+                    <p>System Administrator</p>
+                </div>
+                <div class="quick-card">
+                    <h4>ACCESS LEVEL</h4>
+                    <div class="value" style="color: #ef4444;">FULL</div>
+                    <p>All System Features</p>
+                </div>
+                <div class="quick-card">
+                    <h4>STATUS</h4>
+                    <div class="value" style="color: #10b981;">ACTIVE</div>
+                    <p>Online</p>
+                </div>
+            </div>
+
+            <!-- Admin Tools & Features -->
+            <h2>Admin Management Tools</h2>
+            <div class="features-grid floating-actions">
+                <a href="{% url 'admin_system_dashboard' %}" style="text-decoration: none;">
+                    <div class="feature-card">
+                        <h3>
+                            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                            </svg>
+                            System Dashboard
+                        </h3>
+                        <p>View comprehensive system analytics, user statistics, and overall platform health.</p>
+                        <span class="text-light-color" style="font-weight: bold;">Open Dashboard →</span>
+                    </div>
+                </a>
+
+                <a href="/admin/" style="text-decoration: none;">
+                    <div class="feature-card">
+                        <h3>
+                            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <path d="M19 13h-6v6h6v-6zM16 2v6h6V2h-6zM19 13h-6v6h6v-6zM2 13h6v6H2v-6zM16 2v6h6V2h-6z"/>
+                            </svg>
+                            Django Admin
+                        </h3>
+                        <p>Access the full Django administration panel for advanced database management and system configuration.</p>
+                        <span class="text-light-color" style="font-weight: bold;">Admin Panel →</span>
+                    </div>
+                </a>
+
+                <a href="{% url 'admin_user_management' %}" style="text-decoration: none;">
+                    <div class="feature-card">
+                        <h3>
+                            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm0 4c-2.33 0-7 1.17-7 3.5V19h14v-1.5c0-2.33-4.67-3.5-7-3.5zm9 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-1.5c0-2.33-4.67-3.5-7-3.5z"/>
+                            </svg>
+                            User Management
+                        </h3>
+                        <p>Manage user accounts, permissions, and enrollment status across the entire system.</p>
+                        <span class="text-light-color" style="font-weight: bold;">Manage Users →</span>
+                    </div>
+                </a>
+
+                <a href="{% url 'admin_instructor_management' %}" style="text-decoration: none;">
+                    <div class="feature-card">
+                        <h3>
+                            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                            </svg>
+                            Instructor Management
+                        </h3>
+                        <p>Oversee instructor accounts and manage their assigned sections and permissions.</p>
+                        <span class="text-light-color" style="font-weight: bold;">Manage Instructors →</span>
+                    </div>
+                </a>
+
+                <div class="feature-card">
+                    <h3>Admin Capabilities</h3>
+                    <ul style="text-align: left; font-size: 0.9rem;">
+                        <li><svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Full database access</li>
+                        <li><svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> User and system management</li>
+                        <li><svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> System configuration</li>
+                        <li><svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Audit logs and reports</li>
+                        <li><svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Security management</li>
+                        <li><svg class="icon" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Content moderation</li>
+                    </ul>
+                </div>
+            </div>
+
         <!-- INSTRUCTOR DASHBOARD -->
-        {% if is_instructor %}
+        {% elif is_instructor %}
             <div class="card welcome-card" style="border-top: 3px solid var(--primary);">
                 <h2>Welcome, Prof. {{ user.get_full_name|default:user.username|upper }}</h2>
                 <p style="font-size: 1.05rem;">
@@ -175,10 +281,10 @@
                                 <circle cx="11" cy="11" r="6"></circle>
                                 <path d="M21 21l-4.35-4.35"></path>
                             </svg>
-                            Find Peers
+                            Find User
                         </h3>
-                        <p>Search for classmates and see their real-time location on campus.</p>
-                        <a href="/search/" class="btn btn-primary" style="margin-top: 1rem; display: inline-block;">Search Peers</a>
+                        <p>Search for users and see their real-time location on campus.</p>
+                        <a href="/search/" class="btn btn-primary" style="margin-top: 1rem; display: inline-block;">Search Users</a>
                     </div>
                 </div>
             {% else %}

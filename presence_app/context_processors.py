@@ -7,21 +7,22 @@ from presence_app.models import InstructorProfile
 
 def is_instructor(request):
     """
-    Add is_instructor flag to all templates.
-    Returns True if the user is an InstructorProfile or is_staff.
+    Add is_instructor and is_admin flags to all templates.
+    Returns True for is_instructor if the user is an InstructorProfile (excluding admins).
+    Returns True for is_admin if the user is staff or superuser.
     """
     if not request.user.is_authenticated:
-        return {'is_instructor': False}
+        return {'is_instructor': False, 'is_admin': False}
+    
+    # Check if user is admin (staff or superuser)
+    if request.user.is_staff or request.user.is_superuser:
+        return {'is_instructor': False, 'is_admin': True}
     
     # Check if user has InstructorProfile
     try:
         request.user.instructor_profile
-        return {'is_instructor': True}
+        return {'is_instructor': True, 'is_admin': False}
     except InstructorProfile.DoesNotExist:
         pass
     
-    # Check if user is staff
-    if request.user.is_staff:
-        return {'is_instructor': True}
-    
-    return {'is_instructor': False}
+    return {'is_instructor': False, 'is_admin': False}

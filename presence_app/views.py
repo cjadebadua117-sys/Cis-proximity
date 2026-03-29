@@ -324,6 +324,10 @@ def enroll(request):
 @login_required(login_url='login')
 def dashboard(request):
     """Render the sign-in dashboard."""
+    # Restrict admin users from accessing the regular dashboard
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect('admin:index')
+    
     # Check if user is enrolled (students) or is an instructor with a section
     try:
         current_presence = StudentPresence.objects.get(student=request.user)
@@ -780,30 +784,63 @@ def peer_search(request):
 
     if query:
         # Search by username, full name, or student ID.
-        # base_qs already respects privacy rules.
-        results = base_qs.filter(
-            Q(student__username__icontains=query) |
-            Q(student__first_name__icontains=query) |
-            Q(student__last_name__icontains=query) |
-            Q(student__profile__student_id_number__icontains=query)
-        ).exclude(student=request.user).distinct()
+        if selected_role == 'student':
+            # Students: base_qs already respects privacy rules.
+            results = base_qs.filter(
+                Q(student__username__icontains=query) |
+                Q(student__first_name__icontains=query) |
+                Q(student__last_name__icontains=query) |
+                Q(student__profile__student_id_number__icontains=query)
+            ).exclude(student=request.user).distinct()
 
-        # partition into public vs custom (friends-only) lists for display
-        public_results = []
-        custom_results = []
-        for presence in results:
-            try:
-                level = presence.student.profile.privacy_level
-            except Exception:
-                level = None
-            if level == UserProfile.PRIVACY_PUBLIC:
+            # partition into public vs custom (friends-only) lists for display
+            public_results = []
+            custom_results = []
+            for presence in results:
+                try:
+                    level = presence.student.profile.privacy_level
+                except Exception:
+                    level = None
+                if level == UserProfile.PRIVACY_PUBLIC:
+                    public_results.append(presence)
+                elif level == UserProfile.PRIVACY_FRIENDS_ONLY:
+                    custom_results.append(presence)
+            # reconcile statuses for both partitions
+            for presence in public_results + custom_results:
+                _reconcile_status(presence)
+            results = None  # clear original to avoid confusion, use new lists
+        else:
+            # Instructors: Search directly in User and InstructorProfile tables
+            # since instructors may not have StudentPresence records
+            from django.shortcuts import get_object_or_404
+            instructor_users = User.objects.filter(
+                Q(username__icontains=query) |
+                Q(first_name__icontains=query) |
+                Q(last_name__icontains=query),
+                instructor_profile__isnull=False,
+                profile__instructor_visibility=UserProfile.INSTRUCTOR_VISIBILITY_EVERYONE
+            ).exclude(id=request.user.id).distinct()
+
+            # Create/fetch presence objects for instructors for template compatibility
+            public_results = []
+            for user in instructor_users:
+                try:
+                    profile = user.profile
+                except UserProfile.DoesNotExist:
+                    profile = UserProfile.objects.create(user=user)
+                
+                # Try to get or create a StudentPresence for template compatibility
+                try:
+                    presence = StudentPresence.objects.get(student=user)
+                except StudentPresence.DoesNotExist:
+                    presence = StudentPresence(student=user, is_online=False)
+                
+                # Mark as instructor for template display
+                presence.is_instructor = True
                 public_results.append(presence)
-            elif level == UserProfile.PRIVACY_FRIENDS_ONLY:
-                custom_results.append(presence)
-        # reconcile statuses for both partitions
-        for presence in public_results + custom_results:
-            _reconcile_status(presence)
-        results = None  # clear original to avoid confusion, use new lists
+            
+            custom_results = []
+            results = None
     else:
         # No query: keep results empty and show online list above.
         public_results = []
@@ -892,6 +929,10 @@ def profile_view(request, username=None):
         # View own profile
         user = request.user
         is_own_profile = True
+    
+    # Restrict admin/staff users from viewing profiles
+    if user.is_staff or user.is_superuser:
+        return redirect('admin:index')
     
     try:
         profile = user.profile  # type: ignore
@@ -1218,16 +1259,23 @@ def instructor_privacy_update(request):
 @login_required(login_url='login')
 def search_peers_api(request):
     """
-    API endpoint to search for peers by username.  Used both by the peer
-    discovery page and by the privacy manager when adding allowed friends.
+    API endpoint to search for users (students/instructors) by username.
+    Used both by the user discovery page and by the privacy manager when adding allowed friends.
     
     Privacy rules are evaluated from the perspective of the account being
     queried (i.e. the user whose name is being searched):
 
+    For Students:
     - PUBLIC: everyone can see the user.
     - FRIENDS_ONLY ("Custom"): only people explicitly added to that user's
       friends/access list may see them.
     - ONLY_ME: the user never appears in search results for anyone else.
+    
+    For Instructors:
+    - instructor_visibility='everyone': searchable by all users
+    - instructor_visibility='none': not searchable at all
+    
+    Users can be searched if their privacy allows it, regardless of online status.
 
     When invoked from the privacy manager the returned list is also filtered
     to remove any users that the searching account has already added (so you
@@ -1238,19 +1286,11 @@ def search_peers_api(request):
     if len(query) < 1:
         return JsonResponse({'peers': [], 'results': []})
     
-    # Get the searching user's section for classmate verification
-    try:
-        searcher_presence = StudentPresence.objects.get(student=request.user)
-        searcher_section = searcher_presence.section
-    except StudentPresence.DoesNotExist:
-        # If searcher has no section, they can only see PUBLIC users
-        searcher_section = None
-    
-    # Build the query to find matching users
+    # Build the query to find matching users - search all users except staff/superuser/self
+    # This includes both students and instructors
     matching_users = User.objects.filter(
-        Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query),
-        studentpresence__isnull=False  # Only actual students
-    ).exclude(id=request.user.id).distinct()
+        Q(username__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query)
+    ).exclude(id=request.user.id).exclude(is_staff=True).exclude(is_superuser=True).distinct()
     
     # Determine users already in the searcher's access list so we can hide them
     try:
@@ -1266,39 +1306,62 @@ def search_peers_api(request):
         # skip any user already in the access list
         if user.id in existing_ids:
             continue
+        
+        # Check if user is an instructor
+        is_instructor = False
+        try:
+            user.instructor_profile
+            is_instructor = True
+        except InstructorProfile.DoesNotExist:
+            is_instructor = False
+        
         try:
             user_profile = user.profile
-            user_presence = user.studentpresence
+        except UserProfile.DoesNotExist:
+            # Create profile if it doesn't exist
+            user_profile = UserProfile.objects.create(user=user)
+        
+        # Handle instructor search with instructor_visibility
+        if is_instructor:
+            # For instructors, check instructor_visibility setting
+            if user_profile.instructor_visibility == UserProfile.INSTRUCTOR_VISIBILITY_NONE:
+                continue  # Instructor not searchable
             
-            # RULE 1: ONLY_ME - Never show in search results
-            if user_profile.privacy_level == UserProfile.PRIVACY_ONLY_ME:
-                continue
-            
-            # RULE 2: PUBLIC - Show to everyone
-            if user_profile.privacy_level == UserProfile.PRIVACY_PUBLIC:
+            # Instructor is searchable (instructor_visibility='everyone')
+            peers_list.append({
+                'id': user.id,
+                'username': user.username,
+                'display_name': f"{user.first_name} {user.last_name}".strip() or user.username,
+                'privacy': 'instructor'
+            })
+            continue
+        
+        # Handle student search with privacy_level
+        # RULE 1: ONLY_ME - Never show in search results
+        if user_profile.privacy_level == UserProfile.PRIVACY_ONLY_ME:
+            continue
+        
+        # RULE 2: PUBLIC - Show to everyone
+        if user_profile.privacy_level == UserProfile.PRIVACY_PUBLIC:
+            peers_list.append({
+                'id': user.id,
+                'username': user.username,
+                'display_name': f"{user.first_name} {user.last_name}".strip() or user.username,
+                'privacy': 'public'
+            })
+            continue
+        
+        # RULE 3: FRIENDS_ONLY (Custom) - Show only if the searcher is allowed by them
+        if user_profile.privacy_level == UserProfile.PRIVACY_FRIENDS_ONLY:
+            # check whether the searching user has been granted access
+            if request.user in user_profile.friends.all():
                 peers_list.append({
                     'id': user.id,
                     'username': user.username,
                     'display_name': f"{user.first_name} {user.last_name}".strip() or user.username,
-                    'privacy': 'public'
+                    'privacy': 'custom'
                 })
-                continue
-            
-            # RULE 3: FRIENDS_ONLY (Custom) - Show only if the searcher is allowed by them
-            if user_profile.privacy_level == UserProfile.PRIVACY_FRIENDS_ONLY:
-                # check whether the searching user has been granted access
-                if request.user in user_profile.friends.all():
-                    peers_list.append({
-                        'id': user.id,
-                        'username': user.username,
-                        'display_name': f"{user.first_name} {user.last_name}".strip() or user.username,
-                        'privacy': 'custom'
-                    })
-                # otherwise don't include them
-                continue
-        
-        except (UserProfile.DoesNotExist, StudentPresence.DoesNotExist):
-            # Skip users without profiles
+            # otherwise don't include them
             continue
     
     return JsonResponse({'peers': peers_list, 'results': peers_list})

@@ -13,23 +13,6 @@
         <p style="margin: 0; color: var(--text-muted); font-size: 0.9rem;">Adjust cleaning sign-out times for your students if needed</p>
     </div>
 
-    <!-- Network Status -->
-    {% if network_status == 'online' %}
-        <div class="alert alert-success">
-            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                <path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            You are on the University Network.
-        </div>
-    {% else %}
-        <div class="alert alert-error">
-            <svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                <path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            You are NOT on the University Network. Some features may be limited.
-        </div>
-    {% endif %}
-
     <!-- Messages -->
     {% if messages %}
         <div style="margin-bottom: 2rem;">

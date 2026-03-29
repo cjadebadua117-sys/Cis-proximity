@@ -14,10 +14,6 @@
             <span class="peer-value">{{ presence.student.get_full_name|default:presence.student.username }}</span>
         </div>
         <div class="peer-field">
-            <span class="peer-label">Student ID</span>
-            <span class="peer-value">{{ presence.student.profile.student_id_number|default:"-" }}</span>
-        </div>
-        <div class="peer-field">
             <span class="peer-label">Phone Number</span>
             <span class="peer-value">{{ presence.student.profile.phone_number|default:"-" }}</span>
         </div>
