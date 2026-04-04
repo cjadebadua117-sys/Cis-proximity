@@ -58,6 +58,205 @@
         min-width: 300px;
     }
 
+    .lab-history-layout {
+        display: grid;
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+        gap: 1.5rem;
+        align-items: start;
+        width: 100%;
+    }
+
+    .lab-history-sidebar {
+        width: 100%;
+        max-width: 320px;
+        background: #111214;
+        border: 1px solid #242730;
+        border-radius: 16px;
+        padding: 1rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .lab-history-main {
+        min-width: 0;
+        width: 100%;
+        background: #111214;
+        border: 1px solid #242730;
+        border-radius: 16px;
+        padding: 1.25rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .lab-history-main .lab-stats {
+        margin-bottom: 1.5rem;
+    }
+
+    .lab-history-main table.lab-history-table {
+        margin-top: 0.75rem;
+    }
+
+    .calendar-card {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .calendar-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+
+    .calendar-title {
+        color: #a9b2d6;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        margin-bottom: 0.25rem;
+    }
+
+    .calendar-month {
+        color: #ffffff;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    .calendar-nav {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .calendar-arrow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        background: #1e2534;
+        color: #ffffff;
+        text-decoration: none;
+        transition: background 0.2s ease;
+    }
+
+    .calendar-arrow:hover {
+        background: #2e3d66;
+    }
+
+    .calendar-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .calendar-table th,
+    .calendar-table td {
+        padding: 0.55rem;
+        text-align: center;
+        font-size: 0.86rem;
+    }
+
+    .calendar-table th {
+        color: #7a8faf;
+    }
+
+    .calendar-table td {
+        min-width: 34px;
+        min-height: 34px;
+        position: relative;
+        padding: 0.2rem;
+    }
+
+    .calendar-day,
+    .calendar-day.blank {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        min-width: 32px;
+        min-height: 32px;
+        border-radius: 50%;
+        color: #d1d9ff;
+        text-decoration: none;
+        transition: background 0.2s ease, color 0.2s ease;
+        position: relative;
+    }
+
+    .calendar-day:hover {
+        background: rgba(76, 175, 80, 0.18);
+        color: #ffffff;
+    }
+
+    .outside-month .calendar-day {
+        color: #5a6375;
+        opacity: 0.4;
+    }
+
+    .selected-day .calendar-day {
+        background: #4caf50;
+        color: #0c1115;
+        box-shadow: inset 0 0 0 2px rgba(76, 175, 80, 0.15);
+    }
+
+    .has-records .calendar-day::after {
+        content: '';
+        position: absolute;
+        bottom: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #ffcc00;
+    }
+
+    .calendar-legend {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #9aa3b2;
+        font-size: 0.85rem;
+    }
+
+    .legend-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #ffcc00;
+        display: inline-block;
+    }
+
+    .selected-day-panel {
+        margin-bottom: 1rem;
+    }
+
+    .selected-day-heading {
+        color: #ffffff;
+        font-size: 1.6rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .selected-day-subtitle {
+        color: #a8b2cf;
+        margin: 0;
+    }
+
+    @media (max-width: 1100px) {
+        .lab-history-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .lab-history-layout {
+            display: block;
+        }
+
+        .lab-history-sidebar {
+            margin-bottom: 1.5rem;
+        }
+    }
+
     /* Dark-themed Table */
     .lab-history-table {
         width: 100%;
@@ -300,46 +499,80 @@
     <div class="lab-history-header">
         <h1>
             <span class="lab-history-title">Laboratory History</span>
-            <span class="lab-history-subtitle">Entry & Exit Records</span>
+            <span class="lab-history-subtitle">Calendar-driven Lab Records</span>
         </h1>
     </div>
 
-    <!-- Stats Bar -->
-    {% if total_exits > 0 %}
-    <div class="lab-stats">
-        <div class="stat-item">
-            <div class="stat-label">Total Records</div>
-            <div class="stat-value">{{ total_exits }}</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label">Latest Record</div>
-            <div class="stat-value">
-                {% if grouped_days.0.records.0.exit_time %}
-                    {{ grouped_days.0.records.0.exit_time|date:"h:i A" }}
-                {% else %}
-                    —
-                {% endif %}
-            </div>
-        </div>
-        {% if sparkline_data %}
-        <div class="stat-item">
-            <div class="stat-label">Last 7 Days</div>
-            <div class="stat-value" style="padding:0;">
-                <svg width="80" height="24" viewBox="0 0 80 24" xmlns="http://www.w3.org/2000/svg">
-                    <polyline fill="none" stroke="#4caf50" stroke-width="2" points="{{ sparkline_points }}"/>
-                </svg>
-            </div>
-        </div>
-        {% endif %}
-    </div>
-    {% endif %}
+    <div class="lab-history-layout">
+        <aside class="lab-history-sidebar">
+            <div class="calendar-card">
+                <div class="calendar-head">
+                    <div>
+                        <div class="calendar-title">Calendar</div>
+                        <div class="calendar-month">{{ view_month|date:"F Y" }}</div>
+                    </div>
+                    <div class="calendar-nav">
+                        <a href="{{ calendar_url_base }}?month={{ prev_month }}{% if selected_date %}&date={{ selected_date|date:'Y-m-d' }}{% endif %}" class="calendar-arrow" title="Previous month">←</a>
+                        <a href="{{ calendar_url_base }}?month={{ next_month }}{% if selected_date %}&date={{ selected_date|date:'Y-m-d' }}{% endif %}" class="calendar-arrow" title="Next month">→</a>
+                    </div>
+                </div>
 
-    <!-- Laboratory History grouped by day -->
-    {% if grouped_days %}
-        {% for day in grouped_days %}
-            <section class="day-section">
-                <h2 class="day-header">{{ day.display }}</h2>
+                <table class="calendar-table">
+                    <thead>
+                        <tr>
+                            {% for day_label in week_labels %}
+                                <th>{{ day_label }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in calendar_weeks %}
+                            <tr>
+                                {% for day in week %}
+                                    <td class="{% if not day.in_month %}outside-month{% endif %}{% if day.is_selected %} selected-day{% endif %}{% if day.has_records %} has-records{% endif %}">
+                                        {% if day.in_month %}
+                                            <a href="{{ day.url }}" class="calendar-day" title="{{ day.date|date:'F j, Y' }}">
+                                                {{ day.day }}
+                                            </a>
+                                        {% else %}
+                                            <span class="calendar-day blank">{{ day.day }}</span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
 
+                <div class="calendar-legend">
+                    <span class="legend-dot"></span>
+                    Days with records
+                </div>
+            </div>
+        </aside>
+
+        <main class="lab-history-main">
+            <div class="lab-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Total Visible Records</div>
+                    <div class="stat-value">{{ total_exits }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Selected Date</div>
+                    <div class="stat-value">{{ selected_date_display }}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Records on Date</div>
+                    <div class="stat-value">{{ selected_day_count }}</div>
+                </div>
+            </div>
+
+            <section class="selected-day-panel">
+                <h2 class="selected-day-heading">History for {{ selected_date_display }}</h2>
+                <p class="selected-day-subtitle">Click a date on the left calendar to view that day's lab exit history.</p>
+            </section>
+
+            {% if selected_day_records %}
                 <table class="lab-history-table compact">
                     <thead>
                         <tr>
@@ -351,70 +584,41 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for record in day.records %}
-                        <tr>
-                            <td class="student-name">
-                                <a href="{% url 'profile_view' record.student_username %}" style="color: inherit; text-decoration: none; display: block;">
-                                    {{ record.student_full_name|default:record.student_username }}
-                                </a>
-                                <div class="student-username">{{ record.student_username|default:'(unknown)' }}</div>
-                                <div class="student-section">{{ record.section_name|default:'—' }}</div>
-                                <div class="student-id">{{ record.student_id_number|default:'—' }}</div>
-                            </td>
-                            <td class="lab-room">{{ record.room_name|default:"Unknown" }}</td>
-                            <td class="entrance-time">{% if record.entrance_time %}{{ record.entrance_time|date:"h:i A" }}{% else %}—{% endif %}</td>
-                            <td class="exit-time">{% if record.exit_time %}{{ record.exit_time|date:"h:i A" }}{% else %}—{% endif %}</td>
-                            <td class="duration-time">
-                                {% if record.duration_minutes %}
-                                    {% if record.duration_minutes >= 60 %}
-                                        {{ record.duration_hours }}h {{ record.duration_minutes_remainder }}m
+                        {% for record in selected_day_records %}
+                            <tr>
+                                <td class="student-name">
+                                    <a href="{% url 'profile_view' record.student_username %}" style="color: inherit; text-decoration: none; display: block;">
+                                        {{ record.student_full_name|default:record.student_username }}
+                                    </a>
+                                    <div class="student-username">{{ record.student_username|default:'(unknown)' }}</div>
+                                    <div class="student-section">{{ record.section_name|default:'—' }}</div>
+                                    <div class="student-id">{{ record.student_id_number|default:'—' }}</div>
+                                </td>
+                                <td class="lab-room">{{ record.room_name|default:"Unknown" }}</td>
+                                <td class="entrance-time">{% if record.entrance_time %}{{ record.entrance_time|date:"h:i A" }}{% else %}—{% endif %}</td>
+                                <td class="exit-time">{% if record.exit_time %}{{ record.exit_time|date:"h:i A" }}{% else %}—{% endif %}</td>
+                                <td class="duration-time">
+                                    {% if record.duration_minutes %}
+                                        {% if record.duration_minutes >= 60 %}
+                                            {{ record.duration_hours }}h {{ record.duration_minutes_remainder }}m
+                                        {% else %}
+                                            {{ record.duration_minutes }}m
+                                        {% endif %}
                                     {% else %}
-                                        {{ record.duration_minutes }}m
+                                        —
                                     {% endif %}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-            </section>
-        {% endfor %}
-    {% else %}
-        <div class="empty-state">
-            <p>No laboratory records yet.</p>
-            <p style="font-size: 0.95rem; margin-top: 1rem;">Lab entries and exits will be recorded here automatically.</p>
-        </div>
-    {% endif %}
+            {% else %}
+                <div class="empty-state">
+                    <p>No lab history found for this date.</p>
+                    <p style="font-size: 0.95rem; margin-top: 1rem;">Choose another calendar date to view a different day.</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
 </div>
 {% endblock %}
-
-<style>
-    /* Date header with narrow magenta glow (text-stroke) */
-    .day-header {
-        color: #ffffff;
-        -webkit-text-stroke: 0.8px #ff00ff;
-        text-shadow: 0 0 6px rgba(255,0,255,0.25);
-        font-size: 1.1rem;
-        font-weight: 800;
-        margin: 1rem 0 0.6rem 0;
-        padding: 6px 8px;
-        display: inline-block;
-        border-radius: 4px;
-    }
-
-    /* Compact table tweaks */
-    .lab-history-table.compact th,
-    .lab-history-table.compact td {
-        padding: 0.45rem 0.6rem;
-        font-size: 0.88rem;
-    }
-
-    .lab-history-table.compact thead th {
-        font-size: 0.78rem;
-        padding-bottom: 0.35rem;
-    }
-
-    .day-section { margin-bottom: 1rem; }
-</style>

@@ -161,6 +161,7 @@ class PresenceSessionAdmin(admin.ModelAdmin):
 @admin.register(LaboratoryHistory)
 class LaboratoryHistoryAdmin(admin.ModelAdmin):
     """Admin interface for automatic Laboratory History exit tracking."""
+    date_hierarchy = 'exit_time'
     list_display = ('student', 'room_name', 'exit_time', 'duration_display')
     list_filter = ('room', 'exit_time')
     search_fields = ('student__username', 'student__email', 'room__name')

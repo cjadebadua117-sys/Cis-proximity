@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
             name='LaboratoryHistory',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('exit_time', models.DateTimeField(auto_now_add=True)),
+                ('exit_time', models.DateTimeField(auto_now_add=True, db_index=True)),
                 ('duration_minutes', models.IntegerField(default=0, help_text='How long student was in lab')),
                 ('room', models.ForeignKey(blank=True, help_text='Lab room', null=True, on_delete=django.db.models.deletion.SET_NULL, to='presence_app.room')),
                 ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='lab_visits', to=settings.AUTH_USER_MODEL)),

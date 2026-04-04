@@ -2674,7 +2674,6 @@ def laboratory_history(request):
     Display Laboratory History - instructor-only view for automatic exit tracking.
     Shows when students exited labs and how long they spent there.
     """
-    # Restrict access to instructors only
     try:
         is_instructor = hasattr(request.user, 'instructor_profile') or request.user.is_staff
     except Exception:
@@ -2685,27 +2684,23 @@ def laboratory_history(request):
         messages.error(request, 'Access denied — laboratory history is for instructors only.')
         return redirect('dashboard')
 
-    # Keep profile fetch for template/context safety
     try:
         instructor_profile = request.user.instructor_profile
     except InstructorProfile.DoesNotExist:
         instructor_profile = None
 
-    # Build rows from SignInRecord directly so displayed entrance/exit times
-    # are exact (no inferred timestamps).
     lab_rows = []
     total = 0
-    
     try:
         lab_room_filter = Q(room__name__icontains='lab') | Q(room__name__icontains='orc')
-        qs = (SignInRecord.objects.select_related('student', 'room')
-              .filter(lab_room_filter)
-              .order_by('-sign_in_time'))
-        
+        qs = (
+            SignInRecord.objects.select_related('student', 'room')
+            .filter(lab_room_filter)
+            .order_by('-sign_in_time')
+        )
         total = qs.count()
-        
+
         for r in qs:
-            # Resolve student's section for instructor clarity
             section_name = ''
             try:
                 sp = r.student.studentpresence
@@ -2714,7 +2709,6 @@ def laboratory_history(request):
             except Exception:
                 section_name = ''
 
-            # Get student ID number from profile
             student_id_number = ''
             try:
                 profile = r.student.profile
@@ -2723,16 +2717,14 @@ def laboratory_history(request):
             except Exception:
                 student_id_number = ''
 
-            if r.sign_out_time:
-                duration_minutes = r.duration_minutes()
-            else:
-                # Active lab session: compute running duration.
-                duration_minutes = int((timezone.now() - r.sign_in_time).total_seconds() / 60)
-
+            duration_minutes = (
+                r.duration_minutes()
+                if r.sign_out_time
+                else int((timezone.now() - r.sign_in_time).total_seconds() / 60)
+            )
             duration_hours = int(duration_minutes // 60) if duration_minutes else 0
             duration_minutes_remainder = int(duration_minutes % 60) if duration_minutes else 0
 
-            # append record
             lab_rows.append({
                 'student': r.student,
                 'student_username': r.student.username,
@@ -2747,17 +2739,14 @@ def laboratory_history(request):
                 'duration_minutes_remainder': duration_minutes_remainder,
             })
     except Exception:
-        # if history fetch fails just continue with empty list
         pass
 
-    # allow CSV export
     if request.GET.get('export') == 'csv':
         import csv
         from django.http import HttpResponse
         resp = HttpResponse(content_type='text/csv')
         resp['Content-Disposition'] = 'attachment; filename="lab_history.csv"'
         writer = csv.writer(resp)
-        # provide a richer export with username, full name, section, and ID
         writer.writerow([
             'Username', 'Full Name', 'Section', 'Student ID',
             'Room', 'Entrance', 'Exit', 'Duration(min)'
@@ -2775,58 +2764,81 @@ def laboratory_history(request):
             ])
         return resp
 
-    # Group rows by the date of entry (entrance_time) where available,
-    # otherwise fall back to exit_time. Use Philippines timezone for date grouping.
+    selected_date = None
+    date_param = request.GET.get('date')
+    if date_param:
+        try:
+            selected_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = None
+
     from collections import defaultdict
     philippines_tz = tz('Asia/Manila')
     groups = defaultdict(list)
-
     for r in lab_rows:
         dt = r.get('entrance_time') or r.get('exit_time')
         if not dt:
-            # Skip records without any timestamp
             continue
         try:
-            # Ensure timezone-aware conversion where possible
             date_key = dt.astimezone(philippines_tz).date() if hasattr(dt, 'astimezone') else dt.date()
         except Exception:
             date_key = dt.date()
         groups[date_key].append(r)
 
-    # Build ordered list of days (most recent first)
-    grouped_days = []
-    for day in sorted(groups.keys(), reverse=True):
-        # Sort each day's records with most recent exit_time first
-        records = sorted(groups[day], key=lambda x: x.get('exit_time') or x.get('entrance_time'), reverse=True)
-        grouped_days.append({
-            'date': day,
-            'display': day.strftime('%B %d, %Y'),
-            'records': records,
-            'count': len(records),
-        })
+    if groups and not selected_date:
+        selected_date = max(groups.keys())
+    if not selected_date:
+        selected_date = timezone.now().date()
 
-    # Build sparkline data for the past 7 days (including today)
-    from django.utils import timezone
-    from datetime import timedelta
-    today = timezone.now().date()
-    sparkline = []
-    for i in range(6, -1, -1):
-        d = today - timedelta(days=i)
-        sparkline.append(len(groups.get(d, [])))
+    selected_day_records = sorted(
+        groups.get(selected_date, []),
+        key=lambda x: x.get('exit_time') or x.get('entrance_time'),
+        reverse=True,
+    )
+    selected_day_count = len(selected_day_records)
 
-    # convert to SVG point string (scale x by 10, invert y for 24px height)
-    points = []
-    for idx, v in enumerate(sparkline):
-        x = idx * 10
-        y = 24 - v
-        points.append(f"{x},{y}")
-    sparkline_points = ' '.join(points)
+    month_param = request.GET.get('month')
+    if month_param:
+        try:
+            view_month = datetime.strptime(month_param, '%Y-%m').date().replace(day=1)
+        except ValueError:
+            view_month = selected_date.replace(day=1)
+    else:
+        view_month = selected_date.replace(day=1)
+
+    calendar_weeks = []
+    for week in calendar.Calendar(firstweekday=6).monthdatescalendar(view_month.year, view_month.month):
+        week_cells = []
+        for day in week:
+            week_cells.append({
+                'day': day.day,
+                'date': day,
+                'in_month': day.month == view_month.month,
+                'is_selected': day == selected_date,
+                'has_records': day in groups,
+                'url': f"{request.path}?date={day.strftime('%Y-%m-%d')}&month={view_month.strftime('%Y-%m')}",
+            })
+        calendar_weeks.append(week_cells)
+
+    prev_month = (view_month.replace(day=1) - timedelta(days=1)).replace(day=1)
+    next_month = (view_month + timedelta(days=31)).replace(day=1)
+    week_labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    selected_date_display = selected_date.strftime('%B %d, %Y')
+    calendar_url_base = request.path
 
     context = {
-        'grouped_days': grouped_days,
+        'instructor_profile': instructor_profile,
         'total_exits': total,
-        'sparkline_data': sparkline,  # list of 7 integers oldest->newest
-        'sparkline_points': sparkline_points,
+        'calendar_weeks': calendar_weeks,
+        'week_labels': week_labels,
+        'view_month': view_month,
+        'prev_month': prev_month.strftime('%Y-%m'),
+        'next_month': next_month.strftime('%Y-%m'),
+        'selected_date': selected_date,
+        'selected_date_display': selected_date_display,
+        'selected_day_records': selected_day_records,
+        'selected_day_count': selected_day_count,
+        'calendar_url_base': calendar_url_base,
     }
     return render(request, 'laboratory_history.html', context)
 
