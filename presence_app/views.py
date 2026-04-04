@@ -2157,51 +2157,93 @@ def instructor_manage_signout(request):
     recent_cutoff = today - timedelta(days=7)
 
     if not section and not is_staff_user:
-        activities = ActivityHour.objects.none()
+        student_rows = []
         recent_activities = ActivityHour.objects.none()
+        enrolled_count = 0
+        signed_in_count = 0
+        absent_count = 0
         messages.warning(request, 'No section assigned yet. Ask an administrator to assign your section.')
     else:
-        # Primary panel: today's sessions (all if staff, section-filtered if instructor)
-        if is_staff_user:
-            activities = ActivityHour.objects.filter(
-                sign_in_time__date=today
-            ).select_related('student').order_by('-sign_in_time')
-        else:
-            activities = ActivityHour.objects.filter(
-                student__studentpresence__section=section,
-                sign_in_time__date=today
-            ).select_related('student').order_by('-sign_in_time')
+        enrolled_students = StudentPresence.objects.filter(
+            student__is_staff=False,
+            student__instructor_profile__isnull=True,
+        )
+        if not is_staff_user:
+            enrolled_students = enrolled_students.filter(section=section)
+        enrolled_students = enrolled_students.select_related('student', 'current_room').order_by('student__last_name', 'student__first_name')
 
-        # Secondary panel: last 7 days (including today) so instructors can still adjust records
-        if is_staff_user:
-            recent_activities = ActivityHour.objects.filter(
-                sign_in_time__date__gte=recent_cutoff
-            ).select_related('student').order_by('-sign_in_time')[:100]
-        else:
-            recent_activities = ActivityHour.objects.filter(
+        # Today's activity hour records for students in this section
+        today_activities = ActivityHour.objects.filter(sign_in_time__date=today)
+        if not is_staff_user:
+            today_activities = today_activities.filter(
                 student__studentpresence__section=section,
-                sign_in_time__date__gte=recent_cutoff
-            ).select_related('student').order_by('-sign_in_time')[:100]
+                student__is_staff=False,
+                student__instructor_profile__isnull=True,
+            )
+        today_activities = today_activities.select_related('student').order_by('-sign_in_time')
+        activity_by_student = {activity.student_id: activity for activity in today_activities}
 
-    # compute a simple progress percentage for each activity (assuming 2h required)
+        student_rows = []
+        for presence in enrolled_students:
+            student = presence.student
+            activity = activity_by_student.get(student.id)
+            if activity:
+                status = 'done' if activity.sign_out_time else 'signed in'
+                duration = activity.duration_hours() if activity.sign_out_time else None
+            else:
+                status = 'absent'
+                duration = None
+
+            lab_used = presence.current_room.name if presence.current_room else None
+
+            student_rows.append({
+                'student': student,
+                'student_id_number': getattr(getattr(student, 'profile', None), 'student_id_number', ''),
+                'lab_used': lab_used,
+                'activity': activity,
+                'status': status,
+                'duration': duration,
+            })
+
+        enrolled_count = enrolled_students.count()
+        signed_in_count = sum(1 for row in student_rows if row['activity'] is not None)
+        absent_count = enrolled_count - signed_in_count
+
+        # Secondary panel: last 7 days (including today)
+        recent_activities = ActivityHour.objects.filter(sign_in_time__date__gte=recent_cutoff)
+        if not is_staff_user:
+            recent_activities = recent_activities.filter(
+                student__studentpresence__section=section,
+                student__is_staff=False,
+                student__instructor_profile__isnull=True,
+            )
+        recent_activities = recent_activities.select_related('student').order_by('-sign_in_time')[:100]
+
     now = timezone.now()
-    for act in list(activities) + list(recent_activities):
-        if act.sign_out_time:
-            act.progress = 100
-        else:
-            elapsed = now - act.sign_in_time
+    # Add a progress value only for today rows with active sessions.
+    for row in student_rows:
+        activity = row['activity']
+        if activity and not activity.sign_out_time:
+            elapsed = now - activity.sign_in_time
             minutes = elapsed.total_seconds() / 60
-            act.progress = max(0, min(100, int((minutes / 120) * 100)))
+            row['progress'] = max(0, min(100, int((minutes / 120) * 100)))
+        else:
+            row['progress'] = 100 if activity else 0
     
     # Check if user is on university network
     network_status = 'online' if is_on_university_wifi(request) else 'offline'
     
+    activity_label = 'Wed Session' if today.weekday() == 2 else 'Activity Hours'
     context = {
         'instructor_profile': instructor_profile,
         'section': section,
-        'activities': activities,
+        'student_rows': student_rows,
         'recent_activities': recent_activities,
+        'enrolled_count': enrolled_count,
+        'signed_in_count': signed_in_count,
+        'absent_count': absent_count,
         'today': today,
+        'activity_label': activity_label,
         'network_status': network_status,
     }
     
